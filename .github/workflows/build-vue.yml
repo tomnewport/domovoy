@@ -24,3 +24,17 @@ jobs:
             cd domovoy_app
             npm ci
             npm run build
+
+        - name: Copy Built Files via SCP
+          env:
+            SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+            SSH_USER: ${{ secrets.SSH_PRIVATE_KEY }}
+            SSH_HOST: ${{ secrets.SSH_HOST }}
+            SSH_DEPLOY_DIR: /opt/applications/domovoy/prod
+          run: |
+            mkdir -p ~/.ssh
+            echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+            chmod 600 ~/.ssh/id_rsa
+            ssh ${SSH_USER}@${SSH_HOST} mkdir -p ${SSH_DEPLOY_DIR}/app/
+            scp -r domovoy_app/build ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}/app/
+            rm -f ~/.ssh/id_rsa
