@@ -28,7 +28,7 @@ jobs:
         - name: Copy Built Files via SCP
           env:
             SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-            SSH_USER: ${{ secrets.SSH_PRIVATE_KEY }}
+            SSH_USER: ${{ secrets.SSH_USER }}
             SSH_HOST: ${{ secrets.SSH_HOST }}
             SSH_DEPLOY_DIR: /opt/applications/domovoy/prod
           run: |
