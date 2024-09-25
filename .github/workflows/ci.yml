@@ -32,9 +32,9 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_DEPLOY_DIR: /opt/applications/domovoy/${{ env.GITHUB_REF_NAME }}
+          SSH_DEPLOY_DIR: /opt/applications/domovoy/${GITHUB_REF_NAME}
         run: |
-          echo "Deploy dir=$(echo ${SSH_DEPLOY_DIR})"
+          echo "Deploy dir=/opt/applications/domovoy/${GITHUB_REF_NAME}"
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
