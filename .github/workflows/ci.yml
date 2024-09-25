@@ -59,3 +59,29 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} mkdir -p ${SSH_DEPLOY_DIR}/app/
           scp -r domovoy_app/dist ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}/app/
           rm -f ~/.ssh/id_rsa
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [ development, production ]
+
+    needs:
+      - build-python
+    steps:
+      - name: Set up
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          COMPOSE_FILE: deploy/${{ matrix.environment }}/docker-compose.yml
+          SSH_DEPLOY_DIR: /opt/applications/domovoy/${{ matrix.environment }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo ${SSH_USER}
+          scp -r ${COMPOSE_FILE} ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${SSH_DEPLOY_DIR} && docker-compose up -d"
+          rm -f ~/.ssh/id_rsa

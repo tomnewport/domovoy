@@ -5,4 +5,4 @@ services:
     image: tomnewport/domovoy:development
     restart: unless-stopped
     ports:
-      - "127.0.0.1:15209:8000"
+      - "127.0.0.1:15208:8000"
