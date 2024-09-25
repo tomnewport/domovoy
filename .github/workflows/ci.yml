@@ -57,10 +57,10 @@ jobs:
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
       - name: Build the Docker image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:latest .
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:${{ env.GITHUB_REF_NAME }} .
 
       - name: Push Docker image
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:latest
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:${{ env.GITHUB_REF_NAME }}
 
       - name: Template out file
         uses: danielr1996/envsubst-action@1.0.0
@@ -85,5 +85,5 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} ls ${SSH_DEPLOY_DIR}/${GITHUB_REF_NAME} 
           scp -r ${COMPOSE_FILE} ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}/${GITHUB_REF_NAME}
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${SSH_DEPLOY_DIR}/${GITHUB_REF_NAME} && docker-compose up -d"
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${SSH_DEPLOY_DIR}/${GITHUB_REF_NAME} && docker-compose pull && docker-compose up -d"
           rm -f ~/.ssh/id_rsa
