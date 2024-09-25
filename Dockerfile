@@ -4,4 +4,5 @@ COPY . /app
 WORKDIR /app
 RUN poetry config virtualenvs.create false
 RUN poetry install
-CMD ["python", "domovoy/manage.py", "runserver"]
+WORKDIR /app/domovoy
+CMD ["uvicorn", "domovoy.asgi:application"]
