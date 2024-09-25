@@ -81,7 +81,8 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          echo ${SSH_USER}
+  
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} pwd
           scp -r ${COMPOSE_FILE} ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${SSH_DEPLOY_DIR} && docker-compose up -d"
           rm -f ~/.ssh/id_rsa
