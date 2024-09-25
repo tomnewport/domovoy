@@ -32,9 +32,9 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_DEPLOY_DIR: /opt/applications/domovoy/${GITHUB_HEAD_REF}
+          SSH_DEPLOY_DIR: /opt/applications/domovoy/${GITHUB_REF_NAME}
         run: |
-          echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF})"
+          echo "BRANCH_NAME=$(echo ${GITHUB_REF_NAME})"
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
@@ -65,7 +65,7 @@ jobs:
       - name: Template out file
         uses: danielr1996/envsubst-action@1.0.0
         env:
-          PORT: ${{ env.GITHUB_HEAD_REF == 'main' && '14520' || '14521' }}
+          PORT: ${{ env.GITHUB_REF_NAME == 'main' && '14520' || '14521' }}
           INSTANCE: staging
         with:
           input: deploy/docker-compose.yml
@@ -77,7 +77,7 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           COMPOSE_FILE: docker-compose.yml
-          SSH_DEPLOY_DIR: /opt/applications/domovoy/${GITHUB_HEAD_REF}
+          SSH_DEPLOY_DIR: /opt/applications/domovoy/${GITHUB_REF_NAME}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
