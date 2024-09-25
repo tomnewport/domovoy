@@ -1,5 +1,5 @@
 FROM python:3.12
-RUN curl -sSL https://install.python-poetry.org | python
+RUN pip install poetry
 COPY . /app
 WORKDIR /app
 RUN poetry install
