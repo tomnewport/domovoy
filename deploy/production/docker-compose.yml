@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  domovoy:
+    image: tomnewport/domovoy:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:15209:8000"
