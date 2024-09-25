@@ -65,7 +65,8 @@ jobs:
       - name: Template out file
         uses: danielr1996/envsubst-action@1.0.0
         env:
-          DEPLOY_PORT: ${{ env.GITHUB_REF_NAME == 'main' && '14520' || '14521' }}
+          HOST_PORT: ${{ env.GITHUB_REF_NAME == 'main' && '14520' || '14521' }}
+          GITHUB_HEAD_REF: ${{ env.GITHUB_HEAD_REF }}
         with:
           input: deploy/docker-compose.yml
           output: docker-compose.yml
