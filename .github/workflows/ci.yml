@@ -32,15 +32,15 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_DEPLOY_DIR: /opt/applications/domovoy/${GITHUB_REF_NAME}
+          SSH_DEPLOY_DIR: /opt/applications/domovoy
         run: |
           echo "Deploy dir=/opt/applications/domovoy/${GITHUB_REF_NAME}"
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           echo ${SSH_USER}
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} mkdir -p ${SSH_DEPLOY_DIR}/app/
-          scp -r domovoy_app/dist ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}/app/
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} mkdir -p ${SSH_DEPLOY_DIR}/${GITHUB_REF_NAME}/static/
+          scp -r domovoy_app/dist/ ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}/${GITHUB_REF_NAME}/static/
           rm -f ~/.ssh/id_rsa
 
   build-api:
