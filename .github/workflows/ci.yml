@@ -34,7 +34,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_DEPLOY_DIR: /opt/applications/domovoy/${GITHUB_REF_NAME}
         run: |
-          echo "BRANCH_NAME=$(echo ${GITHUB_REF_NAME})"
+          echo "Deploy dir=$(echo ${SSH_DEPLOY_DIR})"
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
