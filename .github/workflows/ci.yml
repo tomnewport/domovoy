@@ -61,12 +61,21 @@ jobs:
       - name: Push Docker image
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:latest
 
+      - name: Template out file
+        uses: danielr1996/envsubst-action@1.0.0
+        env:
+          PORT: {{ '14520' if $GITHUB_HEAD_REF == 'dev' else '14521' }}
+          INSTANCE: staging
+        with:
+          input: deploy/docker-compose.yml
+          output: docker-compose.yml
+
       - name: Deploy
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          COMPOSE_FILE: deploy/${GITHUB_HEAD_REF}/docker-compose.yml
+          COMPOSE_FILE: docker-compose.yml
           SSH_DEPLOY_DIR: /opt/applications/domovoy/${GITHUB_HEAD_REF}
         run: |
           mkdir -p ~/.ssh

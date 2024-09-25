@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  domovoy:
+    image: tomnewport/domovoy:${GITHUB_HEAD_REF}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HOST_PORT}:8000"
