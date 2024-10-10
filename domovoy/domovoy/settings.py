@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 
+from domovoy.environment import DmvSettings
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -19,13 +21,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3nd468+78m)_w7y2eoi#@cllh845i@ri(89z0_^^$qb%6ezpl&'
+settings = DmvSettings()
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = settings.domovoy_server_secret_key
 
-ALLOWED_HOSTS = []
+DEBUG = settings.domovoy_django_debug
+
+ALLOWED_HOSTS = settings.domovoy_allowed_hosts
+
+AUTH_USER_MODEL = "dmv_user.DmvUser"
 
 
 # Application definition
@@ -37,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'domovoy.apps.dmv_user',
 ]
 
 MIDDLEWARE = [
@@ -115,7 +120,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = 'api-static/'
+STATIC_ROOT = 'api-static'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
