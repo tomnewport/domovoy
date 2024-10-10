@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - dev
+      - develop
 
 jobs:
 
@@ -74,6 +74,7 @@ jobs:
         env:
           HOST_PORT: ${{ github.ref_name == 'main' && '14520' || '14521' }}
           HOST_NAME: ${{ github.ref_name == 'main' && 'dom' || 'dom-dev' }}
+          DEPLOY_DIR: /opt/applications/domovoy/${{ github.ref_name }}
           uri: $uri
           host: $host
           remote_addr: $remote_addr
@@ -91,12 +92,13 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           DEPLOY_DIR: /opt/applications/domovoy/${{ github.ref_name }}
           COMPOSE_FILE: docker-compose.yml
+          HOST_NAME: ${{ github.ref_name == 'main' && 'dom' || 'dom-dev' }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
           scp -o StrictHostKeyChecking=no ${COMPOSE_FILE} ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}
-          scp -o StrictHostKeyChecking=no site.conf ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}
+          scp -o StrictHostKeyChecking=no site.conf ${SSH_USER}@${SSH_HOST}:/etc/nginx/sites-available/$HOST_NAME.conf
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker system prune --all -f && docker-compose pull && docker-compose up -d"
           rm -f ~/.ssh/id_rsa
