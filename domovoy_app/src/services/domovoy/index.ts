@@ -4,7 +4,10 @@ import type { paths } from './schema.d.ts'
 import createClient from 'openapi-fetch'
 export { getHeaders } from './base'
 
-const apiRoot = window.location.hostname == 'localhost' ? 'http://localhost:8000' : '/'
+const apiRoot =
+  window.location.hostname == 'localhost'
+    ? 'http://localhost:8000'
+    : `${window.location.protocol}//${window.location.host}/`
 
 export const client = createClient<paths>({ baseUrl: apiRoot })
 
