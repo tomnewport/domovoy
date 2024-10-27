@@ -549,7 +549,7 @@ export interface components {
             /** Value */
             value: number;
             statistics: components["schemas"]["HomeStatistics"];
-            result: components["schemas"]["RuleComputeResult"];
+            result: components["schemas"]["RuleComputeResult"] | null;
         };
         /** HomeStatistics */
         HomeStatistics: {

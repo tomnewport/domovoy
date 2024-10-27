@@ -12,7 +12,7 @@ from domovoy.apps.regular_job.stats import HomeStatistics
 class ClaimResponse(Schema):
     value: int
     statistics: HomeStatistics
-    result: RuleComputeResult
+    result: Optional[RuleComputeResult]
 
 
 class RegularJobInstanceSchema(ModelSchema):

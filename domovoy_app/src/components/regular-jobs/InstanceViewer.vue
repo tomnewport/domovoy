@@ -113,7 +113,9 @@ const summary = computed(() => {
   <v-data-table :headers="headers" :items="instances" :search="''">
     <template v-slot:item.completed_at="{ item }"
       ><d-date-display>{{ item.completed_at }}</d-date-display>
-      {{ (item.completed_at || 0) < (item.due_at || 0) ? '(on time)' : '(late)' }}
+      <span v-if="item.due_at">{{
+        (item.completed_at || 0) < (item.due_at || 0) ? '(on time)' : '(late)'
+      }}</span>
     </template>
     <template v-slot:item.completed_by="{ item }"
       ><d-user-display variant="short">{{ item.completed_by }}</d-user-display></template

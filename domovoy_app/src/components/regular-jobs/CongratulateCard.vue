@@ -69,11 +69,7 @@ const daily = computed((): number =>
             <v-col cols="2" v-else></v-col>
             <v-col cols="6">{{ user.name }}</v-col>
             <v-col cols="4">
-              <v-sparkline
-                :gradient="['orange', 'red', 'purple', 'blue']"
-                auto-draw
-                :model-value="user.daily_scores"
-              ></v-sparkline
+              <v-sparkline color="primary" auto-draw :model-value="user.daily_scores"></v-sparkline
             ></v-col>
           </v-row>
         </v-card-text>

@@ -54,6 +54,10 @@ class RegularJobDefinition(models.Model):
 
     @property
     def bonus(self):
+        if self.home.overdue_bounty == 0:
+            return 0
+        if self.open_for_days == 0:
+            return 0
         return int(self.value_default * (max(0, int(self.days_overdue)) / self.open_for_days) * (self.home.overdue_bounty / 100))
 
     def snooze_options(self) -> list[SnoozeOption]:
@@ -174,11 +178,12 @@ class RegularJobDefinition(models.Model):
             bonus = self.bonus
         with transaction.atomic():
             # First off - increment the user's score. Also find the min score
+            total_value = self.validate_value(value) + bonus
             all_memberships = self.home.memberships.all()
             min_score = 10**20
             for membership in all_memberships:
                 if membership.user == user:
-                    membership.score += value
+                    membership.score += total_value
                 min_score = min(min_score, membership.score)
 
             # Now normalise - making the lowest score 0
@@ -188,7 +193,7 @@ class RegularJobDefinition(models.Model):
 
             self.home.base_score += min_score
             self.home.save()
-            total_value = self.validate_value(value) + bonus
+            
             # Create instance
             instance = RegularJobInstance(
                 job=self,

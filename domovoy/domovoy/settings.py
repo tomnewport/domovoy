@@ -108,8 +108,6 @@ WSGI_APPLICATION = "domovoy.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-print(BASE_DIR / "data" / "db.sqlite3")
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",

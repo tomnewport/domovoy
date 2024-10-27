@@ -31,11 +31,12 @@ def get_rules(definition):
         while date_iter.isoformat()[5:10] != date_end.isoformat()[5:10]:
             date_iter += timedelta(days=1)
             months.add(date_iter.strftime(rules.CalendarQuery.MONTH_NAME.value))
-            rule_list.append(
-                rules.RuleCalendar(
-                    query=rules.CalendarQuery.MONTH_NAME, match=list(months)
-                )
+        rule_list.append(
+            rules.RuleCalendar(
+                query=rules.CalendarQuery.MONTH_NAME, match=list(months)
             )
+        )
+        print(list(months))
 
     weekdays = set()
     for k, v in definition["fields"].items():
