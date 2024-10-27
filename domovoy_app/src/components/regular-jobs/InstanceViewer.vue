@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { client, getHeaders } from '@/services/domovoy'
-import { type components } from '@/services/domovoy/schema'
+import type { components } from '@/services/domovoy/schema.d.ts'
 import { useHomesStore } from '@/stores/homes'
 type RegularJobInstanceSchema = components['schemas']['RegularJobInstanceSchema']
 const { jobId } = defineProps<{ jobId: number }>()

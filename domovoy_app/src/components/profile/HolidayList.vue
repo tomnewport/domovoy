@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { client, getHeaders } from '@/services/domovoy'
-import type { components } from '@/services/domovoy/schema'
+import type { components } from '@/services/domovoy/schema.d.ts'
 import CreateHoliday from '@/components/profile/CreateHoliday.vue'
 
 const holidays = ref<components['schemas']['HolidaySchema'][]>([])

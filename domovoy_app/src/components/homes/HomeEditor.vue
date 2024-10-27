@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { components } from '@/services/domovoy/schema'
+import type { components } from '@/services/domovoy/schema.d.ts'
 import { useHomesStore } from '@/stores/homes'
 import { onMounted } from 'vue'
 import { ref } from 'vue'

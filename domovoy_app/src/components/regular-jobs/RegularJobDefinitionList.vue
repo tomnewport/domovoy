@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { components } from '@/services/domovoy/schema'
+import type { components } from '@/services/domovoy/schema.d.ts'
 const props = defineProps<{
   jobs: components['schemas']['RegularJobDefinitionSchema'][]
   onChange: () => Promise<void>

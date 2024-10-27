@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { components } from '@/services/domovoy/schema'
+import type { components } from '@/services/domovoy/schema.d.ts'
 import { ref } from 'vue'
 import { useLoadingState } from './manager'
 import { client, getHeaders } from '@/services/domovoy'

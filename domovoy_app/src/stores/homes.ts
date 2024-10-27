@@ -3,7 +3,7 @@ import { useLoadingState } from './manager'
 import { client } from '@/services/domovoy'
 import { ref } from 'vue'
 import { getHeaders } from '@/services/domovoy/base'
-import type { components } from '@/services/domovoy/schema'
+import type { components } from '@/services/domovoy/schema.d.ts'
 
 export const useHomesStore = defineStore('homes', () => {
   const { loading, initialized, error, startLoading, finishLoading, setError } = useLoadingState()
