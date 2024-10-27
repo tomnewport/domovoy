@@ -31,11 +31,7 @@ const mine = computed(() => me.value?.id === jobDefinition.next_assigned_to)
     <v-card-title class="d-flex"
       ><span>{{ jobDefinition.name }}</span>
       <v-spacer></v-spacer>
-      <v-btn
-        size="small"
-        variant="plain"
-        icon
-        :to="`/homes/${jobDefinition.home}/jobs/${jobDefinition.id}`"
+      <v-btn size="small" variant="plain" icon :to="`/tasks/${jobDefinition.id}/edit`"
         ><v-icon>mdi-pencil</v-icon></v-btn
       ></v-card-title
     >
@@ -102,9 +98,7 @@ const mine = computed(() => me.value?.id === jobDefinition.next_assigned_to)
           </v-list-item>
         </v-list>
       </v-menu>
-      <v-btn :disabled="available" v-on:click="claim" prepend-icon="mdi-clock" color="primary"
-        >Claim</v-btn
-      >
+      <v-btn v-on:click="claim" prepend-icon="mdi-clock" color="primary">Claim</v-btn>
     </v-card-actions>
   </v-card>
 </template>

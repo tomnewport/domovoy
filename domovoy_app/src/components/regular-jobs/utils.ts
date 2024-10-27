@@ -17,12 +17,16 @@ export function getJobClassification(job: RegularJobDefinition, you: null | GetS
   if (!job.next_assigned_due_date) return JobClassification.UNSCHEDULED
   const now = new Date()
   const due = new Date(job.next_assigned_due_date)
+  const assigned = new Date(job.next_assigned_date || 0)
   const yours = you?.id === job.next_assigned_to
 
+  const hoursSinceAssigned = (now.valueOf() - assigned.valueOf()) / (1000 * 60 * 60)
   const daysToDue = (due.valueOf() - now.valueOf()) / (1000 * 24 * 60 * 60)
   const remainingTime = daysToDue / job.open_for_days
 
   if (remainingTime > 1) return JobClassification.FUTURE
+  if (hoursSinceAssigned < 12 && daysToDue > 1) return JobClassification.FUTURE
+  if (hoursSinceAssigned < 1) return JobClassification.FUTURE
 
   if (job.criticality === 'H') {
     if (remainingTime < 0.2) return JobClassification.URGENT

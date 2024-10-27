@@ -83,7 +83,7 @@ watch([searchTerm, sortType], applySortSearch)
     <v-container>
       <v-text-field label="Search" v-model="searchTerm"></v-text-field>
       <v-select label="Sort" :items="sortOptions" v-model="sortType"></v-select>
-      <JobEditor />
+      <JobEditor :back-link="`/homes/${home.id}/jobs`" />
       <RegularJobDefinitionList :jobs="matchedDefinitions" :onChange="reload" />
     </v-container>
   </template>

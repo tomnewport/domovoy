@@ -41,6 +41,11 @@ const daily = computed((): number =>
   >
     <template v-slot:default>
       <v-card>
+        <v-card-title class="d-flex">
+          <span style="margin-top: 0.5rem">Well done!</span>
+          <v-spacer></v-spacer>
+          <v-btn icon variant="plain" @click="open = false"><v-icon>mdi-close</v-icon></v-btn>
+        </v-card-title>
         <v-card-text>
           <v-row no-gutters>
             <v-col class="text-h2" cols="6">+{{ regularJobStore.motivation?.valueChange }} </v-col>

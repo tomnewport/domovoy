@@ -5,6 +5,7 @@ import TodoItem from '@/components/regular-jobs/TodoItem.vue'
 import { computed, ref } from 'vue'
 import { useCurrentUser } from '@/lookups/user'
 import { getJobClassification, JobClassification } from './utils'
+import JobEditor from './JobEditor.vue'
 
 const searchTerm = ref<string | null>(null)
 const sortType = ref<'priority' | 'due' | 'assigned'>('priority')
@@ -90,6 +91,7 @@ const open = ref<boolean>(false)
       </v-card>
     </v-menu>
   </v-toolbar>
+  <JobEditor back-link="/tasks" />
   <v-dialog v-model="open">
     <CompleteJobCard
       v-if="selected"
