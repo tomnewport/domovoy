@@ -36,7 +36,6 @@ def get_rules(definition):
                 query=rules.CalendarQuery.MONTH_NAME, match=list(months)
             )
         )
-        print(list(months))
 
     weekdays = set()
     for k, v in definition["fields"].items():
