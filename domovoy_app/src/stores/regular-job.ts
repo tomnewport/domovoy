@@ -19,7 +19,7 @@ export interface Motivation {
   open: boolean
   valueChange: number
   stats: HomeStatistics
-  result: RuleComputeResult
+  result: RuleComputeResult | null
 }
 
 export const useRegularJobStore = defineStore('regular-job', () => {
