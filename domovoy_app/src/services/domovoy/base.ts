@@ -5,7 +5,7 @@ export function getHeaders(): Headers {
   })
 }
 
-const apiRoot = window.location.hostname == 'localhost' ? 'http://localhost:8000' : ''
+const apiRoot = window.location.hostname == 'localhost' ? 'http://localhost:8000' : '/'
 
 export async function apiFetch<ResponseData, Request = void>(
   method: 'GET' | 'POST' | 'DELETE' | 'PUT' | 'PATCH',

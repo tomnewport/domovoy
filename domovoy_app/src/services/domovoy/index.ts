@@ -4,7 +4,9 @@ import type { paths } from './schema.d.ts'
 import createClient from 'openapi-fetch'
 export { getHeaders } from './base'
 
-export const client = createClient<paths>({ baseUrl: 'http://localhost:8000/' })
+const apiRoot = window.location.hostname == 'localhost' ? 'http://localhost:8000' : '/'
+
+export const client = createClient<paths>({ baseUrl: apiRoot })
 
 export default {
   usersV1,
