@@ -84,7 +84,7 @@ jobs:
         uses: danielr1996/envsubst-action@1.0.0
         env:
           HOST_PORT: ${{ github.ref_name == 'main' && '14520' || '14521' }}
-          HOST_NAME: ${{ github.ref_name == 'main' && 'dom' || 'dom-dev' }}
+          HOST_NAME: ${{ github.ref_name == 'main' && 'domovoy' || 'dom-dev' }}
           DEPLOY_DIR: /opt/applications/domovoy/${{ github.ref_name }}
           uri: $uri
           host: $host
@@ -103,7 +103,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           DEPLOY_DIR: /opt/applications/domovoy/${{ github.ref_name }}
           COMPOSE_FILE: docker-compose.yml
-          HOST_NAME: ${{ github.ref_name == 'main' && 'dom' || 'dom-dev' }}
+          HOST_NAME: ${{ github.ref_name == 'main' && 'domovoy' || 'dom-dev' }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
