@@ -11,14 +11,17 @@ from pydantic import BaseModel, Field
 
 HASHCASH_SECRET = settings.SECRET_KEY
 HASHCASH_VERSION = "1"
-HASHCASH_DIFFICULTY = 4
+HASHCASH_DIFFICULTY = 15
 
 
 def trailing_zeros(n):
     """Number of trailing 0s in binary representation of integer n."""
-    if n <= 0: return 0
+    if n <= 0:
+        return 0
     for i in itertools.count(0):
-        if n & (1 << i): return i
+        if n & (1 << i):
+            return i
+
 
 def irange(n):
     """Implementation of range(n) that does not overflow."""
@@ -27,12 +30,14 @@ def irange(n):
         yield i
         i += 1
 
-def all_strings(charset='0123456789ABCDEF'):
+
+def all_strings(charset="0123456789ABCDEF"):
     """Yields all strings in given character set, sorted by length."""
     m = len(charset)
     for n in itertools.count(0):
-        for i in irange(m ** n):
-            yield ''.join([charset[(i // (m ** j)) % m] for j in range(n)])
+        for i in irange(m**n):
+            yield "".join([charset[(i // (m**j)) % m] for j in range(n)])
+
 
 def hash(s):
     """Hash function used by hashcash. Returns an integer."""
@@ -40,22 +45,25 @@ def hash(s):
 
 
 def int_to_base64(n, length=8):
-    byte_array = n.to_bytes(length, byteorder='big', signed=False)
+    byte_array = n.to_bytes(length, byteorder="big", signed=False)
     base64_encoded = base64.urlsafe_b64encode(byte_array)
-    return base64_encoded.decode('utf-8').rstrip('=')
+    return base64_encoded.decode("utf-8").rstrip("=")
 
 
 def sha256_b64_encode(data):
     sha256_hash = hashlib.sha256(data.encode()).digest()
     base64_encoded = base64.urlsafe_b64encode(sha256_hash)
-    return base64_encoded.decode('utf-8').rstrip('=')
+    return base64_encoded.decode("utf-8").rstrip("=")
 
 
 class HashcashConfig(BaseModel):
     version: int
     nonces: list[str]
     difficulty: int
-    time: str = Field(description="Current time in format YYMMDDhhmm", examples=["2411301459"])
+    time: str = Field(
+        description="Current time in format YYMMDDhhmm", examples=["2411301459"]
+    )
+
 
 def get_hashcash_config(secret=HASHCASH_SECRET):
     nonce_times = [timezone.now(), timezone.now() - timedelta(hours=1)]
@@ -67,11 +75,16 @@ def get_hashcash_config(secret=HASHCASH_SECRET):
         "version": HASHCASH_VERSION,
         "nonces": [sha256_b64_encode(_) for _ in nonce_values],
         "difficulty": HASHCASH_DIFFICULTY,
-        "time": timezone.now().strftime("%y%m%d%H%M")
+        "time": timezone.now().strftime("%y%m%d%H%M"),
     }
 
 
-def make_header(s, n, nonce, charset="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"):
+def make_header(
+    s,
+    n,
+    nonce,
+    charset="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+):
     now = timezone.now().strftime("%y%m%d%H%M")
     base = f"{HASHCASH_VERSION}:{n}:{now}:{s}::{nonce}:".encode()
     for token in all_strings(charset):
@@ -103,5 +116,6 @@ class Hashcash(APIKeyHeader):
     def authenticate(self, request, key):
         try:
             return verify_header(key)
-        except (AttributeError, ValueError):
+        except (AttributeError, ValueError) as exc:
+            print(key, exc)
             return False

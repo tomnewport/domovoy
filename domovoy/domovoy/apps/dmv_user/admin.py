@@ -7,29 +7,9 @@ from domovoy.apps.dmv_user.models import DmvUser
 
 @admin.register(DmvUser)
 class UserAdmin(UserAdmin):
-    exclude = ("email",)
-    list_display = ("username", "email", "name_short", "name_full", "is_staff")
-    list_filter = ("is_staff", "is_superuser", "name_short", "name_full", "is_active", "groups")
-    search_fields = ("username", "name_short", "name_full",)
     fieldsets = (
         (None, {"fields": ("username", "password")}),
-        (
-            _("Identity"),
-            {
-                "fields": (
-                    "name_short",
-                    "name_full",
-                ),
-            },
-        ),
-        (
-            _("Security"),
-            {
-                "fields": (
-                    "email_verified",
-                ),
-            },
-        ),
+        (_("Personal info"), {"fields": ("name_short", "name_full", "email")}),
         (
             _("Permissions"),
             {
@@ -42,5 +22,23 @@ class UserAdmin(UserAdmin):
                 ),
             },
         ),
+        (_("Email verification"), {"fields": ("email_verified", "email_link_sent")}),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
+    )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("username", "usable_password", "password1", "password2"),
+            },
+        ),
+    )
+    list_display = ("username", "email", "name_short", "name_full", "is_staff")
+    list_filter = ("is_staff", "is_superuser", "is_active", "groups")
+    search_fields = ("username", "first_name", "last_name", "email")
+    ordering = ("username",)
+    filter_horizontal = (
+        "groups",
+        "user_permissions",
     )
