@@ -60,6 +60,17 @@ jobs:
       - name: Push Docker Image to Docker Hub
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:${{ github.ref_name }}
 
+      - name: Template secrets
+        env:
+          ENV_BACKEND_DEV: ${{ secrets.ENV_BACKEND_DEV }}
+          ENV_BACKEND_PROD: ${{ secrets.ENV_BACKEND_PROD }}
+        run: |
+          if [[ "${{ github.ref_name }}" == "dev" ]]; then
+            echo "$ENV_BACKEND_DEV" > .env
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "$ENV_BACKEND_PROD" > .env
+          fi
+
       - name: Template Docker Compose File
         uses: danielr1996/envsubst-action@1.0.0
         env:
@@ -99,6 +110,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
 
           scp -o StrictHostKeyChecking=no ${COMPOSE_FILE} ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}
+          scp -o StrictHostKeyChecking=no .env ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}/.env
           scp -o StrictHostKeyChecking=no site.conf ${SSH_USER}@${SSH_HOST}:/etc/nginx/sites-available/$HOST_NAME.conf
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker system prune --all -f && docker-compose pull && docker-compose up -d"
           rm -f ~/.ssh/id_rsa
