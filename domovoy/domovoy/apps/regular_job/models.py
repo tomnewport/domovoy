@@ -58,7 +58,8 @@ class RegularJobDefinition(models.Model):
             return 0
         if self.open_for_days == 0:
             return 0
-        return int(self.value_default * (max(0, int(self.days_overdue)) / self.open_for_days) * (self.home.overdue_bounty / 100))
+        max_bonus = self.value_default * 10
+        return min(max_bonus, int(self.value_default * (max(0, int(self.days_overdue)) / self.open_for_days) * (self.home.overdue_bounty / 100)))
 
     def snooze_options(self) -> list[SnoozeOption]:
         skips = [self.assign(self.next_assigned_due_date.date())]
