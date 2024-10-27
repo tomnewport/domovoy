@@ -1,88 +1,117 @@
-name: Build
+name: Build and Deploy
 
 on:
-    push:
-        branches:
-            - master
+  push:
+    branches:
+      - main
+      - dev
 
 jobs:
-  build-python:
-    name: Build backend
+
+  build-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Log in to Docker Hub
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-      - name: Build the Docker image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:latest .
-
-      - name: Push Docker image
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:latest
-
-  build-vue:
-    name: Build frontend
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        environment: [ development, production ]
-
-    steps:
-      - name: Checkout Repo
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Create Node Environment
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
 
-      - name: Install Packages and Build Application
+      - name: Install Dependencies and Build
         run: |
           cd domovoy_app
           npm ci
           npm run build
 
-      - name: Copy Built Files via SCP
+      - name: Deploy Frontend via SCP
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_DEPLOY_DIR: /opt/applications/domovoy/${{ matrix.environment }}
+          DEPLOY_DIR: /opt/applications/domovoy/${{ github.ref_name }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          echo ${SSH_USER}
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} mkdir -p ${SSH_DEPLOY_DIR}/app/
-          scp -r domovoy_app/dist ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}/app/
+
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "mkdir -p ${DEPLOY_DIR}/html/"
+          scp -r domovoy_app/dist/* ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}/html/
           rm -f ~/.ssh/id_rsa
 
-  deploy:
-    name: Deploy
+  build-api:
+    name: Build and Deploy API
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        environment: [ development, production ]
+    needs: build-frontend
 
-    needs:
-      - build-python
     steps:
-      - name: Set up
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build Docker Image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:${{ github.ref_name }} .
+
+      - name: Push Docker Image to Docker Hub
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/domovoy:${{ github.ref_name }}
+
+      - name: Template secrets
+        env:
+          ENV_BACKEND_DEV: ${{ secrets.ENV_BACKEND_DEV }}
+          ENV_BACKEND_PROD: ${{ secrets.ENV_BACKEND_PROD }}
+        run: |
+          if [[ "${{ github.ref_name }}" == "dev" ]]; then
+            echo "$ENV_BACKEND_DEV" > .env
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "$ENV_BACKEND_PROD" > .env
+          fi
+
+      - name: Template Docker Compose File
+        uses: danielr1996/envsubst-action@1.0.0
+        env:
+          HOST_PORT: ${{ github.ref_name == 'main' && '14520' || '14521' }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        with:
+          input: deploy/docker-compose.yml
+          output: docker-compose.yml
+
+      - name: Template Nginx Config
+        uses: danielr1996/envsubst-action@1.0.0
+        env:
+          HOST_PORT: ${{ github.ref_name == 'main' && '14520' || '14521' }}
+          HOST_NAME: ${{ github.ref_name == 'main' && 'dom' || 'dom-dev' }}
+          DEPLOY_DIR: /opt/applications/domovoy/${{ github.ref_name }}
+          uri: $uri
+          host: $host
+          remote_addr: $remote_addr
+          proxy_add_x_forwarded_for: $proxy_add_x_forwarded_for
+          scheme: $scheme
+          request_uri: $request_uri
+        with:
+          input: deploy/site.conf
+          output: site.conf
+
+      - name: Deploy API via SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          COMPOSE_FILE: deploy/${{ matrix.environment }}/docker-compose.yml
-          SSH_DEPLOY_DIR: /opt/applications/domovoy/${{ matrix.environment }}
+          DEPLOY_DIR: /opt/applications/domovoy/${{ github.ref_name }}
+          COMPOSE_FILE: docker-compose.yml
+          HOST_NAME: ${{ github.ref_name == 'main' && 'dom' || 'dom-dev' }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-  
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} pwd
-          scp -r ${COMPOSE_FILE} ${SSH_USER}@${SSH_HOST}:${SSH_DEPLOY_DIR}
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${SSH_DEPLOY_DIR} && docker-compose up -d"
+
+          scp -o StrictHostKeyChecking=no ${COMPOSE_FILE} ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}
+          scp -o StrictHostKeyChecking=no .env ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}/.env
+          scp -o StrictHostKeyChecking=no site.conf ${SSH_USER}@${SSH_HOST}:/etc/nginx/sites-available/$HOST_NAME.conf
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker system prune --all -f && docker-compose pull && docker-compose up -d"
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker-compose exec -T domovoy poetry run python manage.py migrate"
           rm -f ~/.ssh/id_rsa

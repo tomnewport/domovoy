@@ -1,3 +1,6 @@
+.env
+api-static
+
 domovoy_app/dist/
 domovoy_app/node_modules/
 domovoy/db.sqlite3
