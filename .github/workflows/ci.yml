@@ -113,5 +113,5 @@ jobs:
           scp -o StrictHostKeyChecking=no .env ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}/.env
           scp -o StrictHostKeyChecking=no site.conf ${SSH_USER}@${SSH_HOST}:/etc/nginx/sites-available/$HOST_NAME.conf
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker system prune --all -f && docker-compose pull && docker-compose up -d"
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker system prune --all -f && docker-compose exec domovoy poetry run python manage.py migrate"
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker-compose exec -T domovoy poetry run python manage.py migrate"
           rm -f ~/.ssh/id_rsa
