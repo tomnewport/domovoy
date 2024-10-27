@@ -72,7 +72,20 @@ class RegularJobDefinition(models.Model):
             SnoozeOption(date=v.ideal_date, label=f"Skip +{i+1}")
             for i, v in enumerate(skips)
         ]
-        return [_ for _ in options if _.date > today]
+        options.append(SnoozeOption(date=today + timedelta(days=1), label=f"Tomorrow"))
+        options.append(SnoozeOption(date=today + timedelta(days=2), label=f"+2 days"))
+        options.append(SnoozeOption(date=today + timedelta(days=7), label=f"+1 week"))
+
+        dates = set()
+
+        filtered = [_ for _ in options if _.date > today and _.date > self.next_assigned_due_date.date()]
+        unique = []
+        for _ in filtered:
+            if _.date not in dates:
+                unique.append(_)
+            dates.add(_.date)
+
+        return sorted(unique, key=lambda _: _.date)
 
     def assign(self, override_date: Optional[datetime.date] = None):
         """

@@ -8,6 +8,8 @@ const route = useRoute()
 const router = useRouter()
 const regularJobStore = useRegularJobStore()
 
+const { backLink } = defineProps<{ backLink: string }>()
+
 const open = ref<boolean>(route.params.jobId !== undefined)
 const savingCriticality = ref<boolean>(false)
 
@@ -19,7 +21,7 @@ watch(route, () => {
   else open.value = false
 })
 watch(open, (newValue) => {
-  if (!newValue) router.go(-1)
+  if (!newValue) router.push(backLink)
 })
 
 const job = computed(() => {
@@ -56,7 +58,7 @@ async function update(changeObj: Partial<EditJobDefinition>) {
   <v-dialog v-if="job" v-model="open" fullscreen scrollable>
     <template v-slot:default>
       <v-toolbar color="secondary"
-        ><v-btn icon><v-icon v-on:click="open = false">mdi-arrow-left</v-icon></v-btn
+        ><v-btn icon :to="backLink"><v-icon>mdi-arrow-left</v-icon></v-btn
         ><v-toolbar-title>{{ job.name }}</v-toolbar-title></v-toolbar
       >
       <v-card :style="{ paddingBottom: '100px' }">
@@ -79,7 +81,7 @@ async function update(changeObj: Partial<EditJobDefinition>) {
                   <v-col>
                     <d-editable-item
                       :onChange="(value: string) => update({ open_for_days: parseInt(value) })"
-                      label="Open for"
+                      label="Open for (days)"
                       type="number"
                       :value="job.open_for_days"
                     />

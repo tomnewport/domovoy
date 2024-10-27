@@ -16,6 +16,12 @@ const router = createRouter({
       meta: { bottomNav: 0 }
     },
     {
+      path: '/tasks/:jobId/edit',
+      name: 'tasksEditor',
+      component: () => import('@/views/TasksView.vue'),
+      meta: { bottomNav: 0 }
+    },
+    {
       path: '/homes',
       name: 'homes',
       component: () => import('@/views/HomesView.vue'),
