@@ -48,7 +48,7 @@ const matchedJobs = computed(() => {
       )
       .sort((job1, job2) => {
         if (sortType.value === 'assigned')
-          return (job1.next_assigned_date || 0) > (job2.next_assigned_date || 0) ? 1 : -1
+          return (job1.next_assigned_date || 0) > (job2.next_assigned_date || 0) ? -1 : 1
         return (job1.next_assigned_due_date || 0) > (job2.next_assigned_due_date || 0) ? 1 : -1
       })
       .map((job) => {
