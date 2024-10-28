@@ -6,9 +6,11 @@ import BottomMenu from '@/components/layout/BottomMenu.vue'
 
 import { useHashcashConfigStore } from '@/stores/hashcash-config'
 import { useSessionStore } from '@/stores/session'
+import { useRegularJobStore } from './stores/regular-job'
 
 const hashcashConfigStore = useHashcashConfigStore()
 const sessionStore = useSessionStore()
+const regularJobStore = useRegularJobStore()
 
 let intervals: number[] = []
 
@@ -18,6 +20,7 @@ onMounted(() => {
   sessionStore.reloadSession()
   intervals.push(setInterval(hashcashConfigStore.load, 4 * 60 * 60 * 1000))
   intervals.push(setInterval(sessionStore.reloadSession, 5 * 60 * 1000))
+  intervals.push(setInterval(regularJobStore.reload, 5 * 60 * 1000))
 })
 
 onBeforeUnmount(() => {
