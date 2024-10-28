@@ -247,7 +247,11 @@ class RegularJobDefinition(models.Model):
         return total_value
 
     def adjust(self):
-        solution = self.assign(preserve_member=True, override_date=self.next_assigned_date.date())
+        if self.next_assigned_date:
+            override_date = self.next_assigned_date.date()
+        else:
+            override_date = None
+        solution = self.assign(preserve_member=True, override_date=override_date)
         if solution:
             self.next_assigned_to = User.objects.get(id=solution.assignee)
             self.next_assigned_date = timezone.now()
