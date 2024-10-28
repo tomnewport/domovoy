@@ -62,6 +62,8 @@ def edit_regular_job_definition(
     for k, v in changes.dict(exclude_none=True).items():
         setattr(job, k, v)
     job.save()
+    if changes.rules:
+        job.adjust()
     return job
 
 
@@ -75,6 +77,7 @@ def create_regular_job_definition(
 
     new_job = RegularJobDefinition(home=home, **data.dict())
     new_job.save()
+    new_job.adjust()
 
 
 @regular_jobs_v1_router.get(

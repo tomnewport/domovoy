@@ -87,7 +87,7 @@ class RegularJobDefinition(models.Model):
 
         return sorted(unique, key=lambda _: _.date)
 
-    def assign(self, override_date: Optional[datetime.date] = None):
+    def assign(self, preserve_member = False, override_date: Optional[datetime.date] = None):
         """
         Assignees:
            Each assignee rolls a number of D6 dice - controlled by the home's rules.
@@ -113,6 +113,9 @@ class RegularJobDefinition(models.Model):
                 self.home.d6_min,
             )
             rolls = [randrange(1, 7) for _ in range(n_dice)]
+            if preserve_member and assignee == self.next_assigned_to:
+                # Rolls 0 to keep same assignee
+                rolls = [0]
             tiebreak = random()
             calculator = rules.find(baseline)
             assignee_date = next(assignee.filter_available_dates(calculator))
@@ -235,12 +238,34 @@ class RegularJobDefinition(models.Model):
             self.next_assigned_due_date = before_midnight(
                 solution.selected_date
             )
-            self.next_assigned_start_date = self.next_assigned_due_date - timedelta(
-                days=self.open_for_days
+            self.next_assigned_start_date = max(
+                self.next_assigned_date + timedelta(hours=1),
+                self.next_assigned_due_date - timedelta(days=self.open_for_days)
             )
             self.assignment_notes = solution.model_dump(mode="json")
             self.save()
         return total_value
+
+    def adjust(self):
+        solution = self.assign(preserve_member=True, override_date=self.next_assigned_date.date())
+        if solution:
+            self.next_assigned_to = User.objects.get(id=solution.assignee)
+            self.next_assigned_date = timezone.now()
+            self.next_assigned_due_date = before_midnight(
+                solution.selected_date
+            )
+            self.next_assigned_start_date = max(
+                self.next_assigned_date + timedelta(hours=1),
+                self.next_assigned_due_date - timedelta(days=self.open_for_days)
+            )
+            self.assignment_notes = solution.model_dump(mode="json")
+        else:
+            self.next_assigned_to = None
+            self.next_assigned_due_date = None
+            self.next_assigned_date = None
+            self.next_assigned_start_date = None
+            self.assignment_notes = None
+        self.save()
 
 
 class RegularJobInstance(models.Model):
