@@ -75,6 +75,19 @@ Rules are stored as JSON on the job and parsed/validated with Pydantic models in
 
 ---
 
+## Documentation
+
+Comprehensive reference docs for the current state of the app live in
+[`docs/`](docs/README.md):
+
+- [Architecture](docs/ARCHITECTURE.md) — system design, rules engine, assignment & scoring algorithm, auth.
+- [Data model](docs/DATA_MODEL.md) — all models, fields, and relationships.
+- [API reference](docs/API.md) — every endpoint, auth mode, and payload.
+- [Frontend guide](docs/FRONTEND.md) — the Vue SPA's client, stores, routing, and components.
+- [CLAUDE.md](CLAUDE.md) — contributor/agent conventions and gotchas.
+
+---
+
 ## Repository layout
 
 ```
