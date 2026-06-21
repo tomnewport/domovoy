@@ -1,39 +1,43 @@
-# domovoy_app
+# Domovoy frontend (`domovoy_app`)
 
-This template should help get you started developing with Vue 3 in Vite.
+The user-facing single-page app for [Domovoy](../README.md) — a mobile-first PWA
+built with **Vite + Vue 3** (Composition API), **Vuetify 3**, **Pinia**, and
+**vue-router**.
 
-## Recommended IDE Setup
+> 📖 Full frontend documentation (API client, stores, routing, components,
+> theming) lives in [`../docs/FRONTEND.md`](../docs/FRONTEND.md).
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Quickstart
 
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-## Project Setup
+Requires **Node 22**. The backend should be running first (see the
+[root README](../README.md)).
 
 ```sh
+nvm use 22
 npm install
+npm run domovoy-types   # generate the typed API client from the running backend
+npm run dev             # start the Vite dev server
 ```
 
-### Compile and Hot-Reload for Development
+Re-run `npm run domovoy-types` whenever the backend API schema changes — it pulls
+`http://127.0.0.1:8000/api/openapi.json` and regenerates
+`src/services/domovoy/schema.d.ts` (do not edit that file by hand).
 
-```sh
-npm run dev
-```
+## Scripts
 
-### Type-Check, Compile and Minify for Production
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Vite dev server with hot reload |
+| `npm run build` | Type-check (`vue-tsc`) + production build |
+| `npm run preview` | Preview a production build locally |
+| `npm run lint` | ESLint with `--fix` |
+| `npm run format` | Prettier over `src/` |
+| `npm run domovoy-types` | Regenerate the typed API client |
 
-```sh
-npm run build
-```
+## Recommended IDE
 
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+[VS Code](https://code.visualstudio.com/) + the
+[Vue (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.volar)
+extension (disable Vetur). Type-checking for `.vue` files uses `vue-tsc` in place
+of `tsc`. See the [Vite config reference](https://vitejs.dev/config/) for build
+customisation.
