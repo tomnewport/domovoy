@@ -1,3 +1,5 @@
 domovoy_app
 .gitignore
 .git
+.venv
+**/__pycache__

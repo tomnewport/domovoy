@@ -92,7 +92,7 @@ Comprehensive reference docs for the current state of the app live in
 
 ```
 .
-├── domovoy/                  # Django backend (Poetry project)
+├── domovoy/                  # Django backend (uv project)
 │   ├── domovoy/
 │   │   ├── api.py            # NinjaAPI root, mounts the v1 routers
 │   │   ├── settings.py       # Django settings (reads DmvSettings)
@@ -119,10 +119,10 @@ Comprehensive reference docs for the current state of the app live in
 
 ```sh
 cd domovoy
-poetry install
+uv sync
 # create domovoy/.env with the variables in "Configuration" below
-poetry run python manage.py migrate
-poetry run python manage.py runserver
+uv run python manage.py migrate
+uv run python manage.py runserver
 ```
 
 The API is then served at `http://127.0.0.1:8000/api/` with interactive docs at

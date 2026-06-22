@@ -15,7 +15,6 @@ and the [month] is [June 4th]
 {"rule": "calendar", "query": "DDD", "match": ["Wednesday"]}
 """
 
-import datetime
 import enum
 from datetime import timedelta, date
 from typing import Literal, Optional, Union, Annotated

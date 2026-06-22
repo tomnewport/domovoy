@@ -1,27 +1,30 @@
-[tool.poetry]
+[project]
 name = "domovoy"
 version = "0.1.0"
 description = ""
-authors = ["Tom Newport <tom.newport@gmail.com>"]
+authors = [{ name = "Tom Newport", email = "tom.newport@gmail.com" }]
 readme = "README.md"
+requires-python = ">=3.12"
+# Direct dependencies are pinned to the versions Poetry previously locked so the
+# move to uv reproduces the same environment. Dependency upgrades (e.g. the
+# django-ninja Config->Meta change) are deliberate, separate work.
+dependencies = [
+    "django==5.1.1",
+    "django-ninja==1.3.0",
+    "uvicorn==0.30.6",
+    "pydantic-settings==2.5.2",
+    "pydantic[email]==2.9.2",
+    "django-cors-headers==4.4.0",
+    "python-dateutil==2.9.0.post0",
+    "pytz==2024.2",
+    "dj-database-url>=3.0.0,<4",
+    "psycopg[binary]>=3.2.0,<4",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-django = "^5.1.1"
-django-ninja = "^1.3.0"
-uvicorn = "^0.30.6"
-pydantic-settings = "^2.5.2"
-pydantic = {extras = ["email"], version = "^2.9.2"}
-django-cors-headers = "^4.4.0"
-python-dateutil = "^2.9.0.post0"
-pytz = "^2024.2"
-dj-database-url = "^3.0.0"
-psycopg = {extras = ["binary"], version = "^3.2.0"}
+[dependency-groups]
+dev = ["ruff==0.7.0"]
 
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.7.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+# The Django project is run from source via manage.py, not installed as a
+# package, so uv only manages the environment (no build step for the root).
+package = false

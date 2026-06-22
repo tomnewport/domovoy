@@ -1,8 +1,8 @@
 FROM python:3.12
-RUN pip install poetry
+COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /uvx /bin/
 COPY . /app
 WORKDIR /app
-RUN poetry config virtualenvs.create false
-RUN poetry install
+# Install runtime dependencies into /app/.venv (no dev group, locked versions).
+RUN uv sync --frozen --no-dev
 WORKDIR /app/domovoy
-CMD ["uvicorn", "domovoy.asgi:application", "--host", "0.0.0.0"]
+CMD ["uv", "run", "--no-sync", "uvicorn", "domovoy.asgi:application", "--host", "0.0.0.0"]

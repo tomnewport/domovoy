@@ -112,15 +112,15 @@ WSGI_APPLICATION = "domovoy.wsgi.application"
 #
 # Configured from domovoy_database_url (e.g. a managed Postgres URL) when set,
 # otherwise falls back to a local SQLite file so the dev quickstart needs no
-# database server. conn_max_age keeps connections alive across requests and
-# ssl_require is forced for non-SQLite backends (managed Postgres needs TLS).
+# database server. conn_max_age keeps connections alive across requests. TLS is
+# driven by the URL's sslmode (managed Postgres URLs include sslmode=require),
+# so a plain local/CI Postgres without TLS still works.
 
 if settings.domovoy_database_url:
     DATABASES = {
         "default": dj_database_url.parse(
             settings.domovoy_database_url,
             conn_max_age=600,
-            ssl_require=True,
         ),
     }
 else:

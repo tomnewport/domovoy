@@ -5,12 +5,60 @@ on:
     branches:
       - main
       - dev
+  pull_request:
 
 jobs:
+
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: domovoy
+          POSTGRES_PASSWORD: domovoy
+          POSTGRES_DB: domovoy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Ruff
+        run: uv run --no-sync ruff check .
+
+      - name: Django tests
+        working-directory: domovoy
+        env:
+          domovoy_server_secret_key: ci-secret-key
+          domovoy_frontend_root: http://localhost:5173
+          domovoy_smtp_server: localhost
+          domovoy_smtp_port: 25
+          domovoy_smtp_username: ci
+          domovoy_smtp_password: ci
+          # Exercise the Postgres path against the service container above.
+          domovoy_database_url: postgres://domovoy:domovoy@localhost:5432/domovoy
+        run: uv run --no-sync python manage.py test domovoy.apps
 
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
 
     steps:
       - name: Checkout Repository
@@ -45,7 +93,8 @@ jobs:
   build-api:
     name: Build and Deploy API
     runs-on: ubuntu-latest
-    needs: build-frontend
+    needs: [test, build-frontend]
+    if: github.event_name == 'push'
 
     steps:
       - name: Checkout Repository
@@ -113,5 +162,5 @@ jobs:
           scp -o StrictHostKeyChecking=no .env ${SSH_USER}@${SSH_HOST}:${DEPLOY_DIR}/.env
           scp -o StrictHostKeyChecking=no site.conf ${SSH_USER}@${SSH_HOST}:/etc/nginx/sites-available/$HOST_NAME.conf
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker system prune --all -f && docker-compose pull && docker-compose up -d"
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker-compose exec -T domovoy poetry run python manage.py migrate"
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker-compose exec -T domovoy uv run --no-sync python manage.py migrate"
           rm -f ~/.ssh/id_rsa

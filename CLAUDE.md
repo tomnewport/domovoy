@@ -11,14 +11,14 @@ Domovoy is a household chore-sharing app: a **Django 5 + django-ninja** backend
 
 ## Commands
 
-Backend (from `domovoy/`, uses Poetry):
+Backend (from `domovoy/`, uses [uv](https://docs.astral.sh/uv/)):
 
 ```sh
-poetry install
-poetry run python manage.py migrate
-poetry run python manage.py runserver        # serves /api/ and /api/docs
-poetry run python manage.py test             # test runner (no tests yet)
-poetry run ruff check .                        # lint (ruff is a dev dependency)
+uv sync                                              # install deps into .venv (at repo root)
+uv run python manage.py migrate
+uv run python manage.py runserver                    # serves /api/ and /api/docs
+uv run python manage.py test domovoy.apps            # test runner (scope avoids the stray root pkg)
+uv run ruff check .                                  # lint (ruff is a dev dependency)
 ```
 
 Frontend (from `domovoy_app/`, Node 22):
