@@ -3,3 +3,5 @@ domovoy_app
 .git
 .venv
 **/__pycache__
+**/api-static
+**/db.sqlite3

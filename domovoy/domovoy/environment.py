@@ -12,6 +12,9 @@ class DmvSettings(BaseSettings):
     domovoy_smtp_password: str
     domovoy_allowed_cors_origins: list[str] = []
     domovoy_frontend_root: str
+    # Origins trusted for CSRF (scheme + host), needed for the admin to accept
+    # POSTs when running behind a TLS-terminating proxy (e.g. Cloud Run).
+    domovoy_csrf_trusted_origins: list[str] = []
     # Database connection URL (e.g. postgres://user:pass@host/db). When unset the
     # project falls back to a local SQLite file so the dev quickstart needs no
     # database to be running.

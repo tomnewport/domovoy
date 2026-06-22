@@ -31,6 +31,12 @@ DEBUG = settings.domovoy_django_debug
 
 ALLOWED_HOSTS = settings.domovoy_allowed_hosts
 
+# Behind a TLS-terminating proxy (Cloud Run, Fly, etc.) Django sees plain HTTP;
+# trust the forwarded scheme so request.is_secure() and the admin's CSRF check
+# work. CSRF_TRUSTED_ORIGINS must list the public origin(s) for admin POSTs.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = settings.domovoy_csrf_trusted_origins
+
 CORS_ALLOWED_ORIGINS = settings.domovoy_allowed_cors_origins
 CORS_ALLOW_METHODS = (
     "DELETE",
@@ -70,6 +76,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Serves Django/admin static files directly from the app (no nginx in front
+    # on serverless hosts). Must sit immediately after SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -167,7 +176,17 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = "api-static/"
-STATIC_ROOT = "api-static"
+STATIC_ROOT = BASE_DIR / "api-static"
+
+# WhiteNoise compresses collected static and serves it with hashed, far-future
+# cacheable names. collectstatic runs in the Docker build (the runtime FS is
+# ephemeral/read-only on serverless hosts).
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
