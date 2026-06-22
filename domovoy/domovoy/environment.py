@@ -12,3 +12,7 @@ class DmvSettings(BaseSettings):
     domovoy_smtp_password: str
     domovoy_allowed_cors_origins: list[str] = []
     domovoy_frontend_root: str
+    # Database connection URL (e.g. postgres://user:pass@host/db). When unset the
+    # project falls back to a local SQLite file so the dev quickstart needs no
+    # database to be running.
+    domovoy_database_url: str | None = None

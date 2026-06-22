@@ -155,6 +155,7 @@ by [`environment.py`](domovoy/domovoy/environment.py)):
 | Variable | Required | Description |
 | --- | --- | --- |
 | `domovoy_server_secret_key` | ✅ | Django `SECRET_KEY` (also used to sign hashcash nonces) |
+| `domovoy_database_url` | | Database URL (e.g. `postgres://user:pass@host:5432/db`). Unset → local SQLite file |
 | `domovoy_django_debug` | | `true`/`false`, defaults to `false` |
 | `domovoy_allowed_hosts` | | JSON list of allowed hostnames |
 | `domovoy_allowed_cors_origins` | | JSON list of allowed CORS origins |

@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 
+import dj_database_url
+
 from domovoy.environment import DmvSettings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -107,13 +109,27 @@ WSGI_APPLICATION = "domovoy.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+#
+# Configured from domovoy_database_url (e.g. a managed Postgres URL) when set,
+# otherwise falls back to a local SQLite file so the dev quickstart needs no
+# database server. conn_max_age keeps connections alive across requests and
+# ssl_require is forced for non-SQLite backends (managed Postgres needs TLS).
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "data" / "db.sqlite3",
+if settings.domovoy_database_url:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            settings.domovoy_database_url,
+            conn_max_age=600,
+            ssl_require=True,
+        ),
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "data" / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
