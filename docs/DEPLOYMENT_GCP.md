@@ -6,6 +6,37 @@ with **GitHub Actions** deploying automatically and **no long-lived keys** (it u
 Workload Identity Federation) and **no secrets in the repo** (they live in Secret
 Manager).
 
+## A. Create your Google Cloud account (first time only)
+
+Skip this if you already have a Google Cloud account.
+
+1. You need a **Google account** (any Gmail address). If you don't have one,
+   create it first at <https://accounts.google.com/signup>.
+2. Go to <https://cloud.google.com> and click **Get started for free** (or
+   **Start free**).
+3. Sign in with your Google account.
+4. **Step 1 of the signup** — pick your country, agree to the terms, click
+   **Continue**.
+5. **Step 2 of the signup** — you'll be asked for a **credit/debit card**. This
+   is only to verify you're a real person. You get **$300 of free credit for 90
+   days**, and Google will **not** charge you automatically — your account stays
+   on "free trial" until you *manually* choose to upgrade to paid. Enter the card
+   and click **Start my free trial**.
+6. You'll land in the **Google Cloud Console** at
+   <https://console.cloud.google.com>, usually with a default project called
+   "My First Project". You can ignore that — the guide creates a dedicated
+   `domovoy-prod` project in Step 2.
+
+> **Will this cost me money?** Not within the free trial, and not within Cloud
+> Run's separate "Always Free" monthly allowance, which a small app like this
+> stays inside. After the trial ends (90 days or $300 used), services pause
+> unless you upgrade — they won't silently start billing you.
+
+✅ **Checkpoint:** <https://console.cloud.google.com> loads and shows a project
+picker at the top. Now continue below.
+
+---
+
 You do **not** need to install anything. Do everything in **Cloud Shell**:
 
 > Open <https://console.cloud.google.com> → click the **`>_`** terminal icon
@@ -22,9 +53,10 @@ If a command fails, fix that step before moving on.
 You need:
 
 - A Google account.
-- A **billing account** linked to your project. Cloud Run has a generous free
-  monthly allowance, but Google still requires billing to be enabled. You will
-  not be charged within the free tier for a small app like this.
+- A **billing account**. Signing up in Section A already created one (your free
+  trial); Step 2 links it to the project. Google requires billing to be *enabled*
+  even though Cloud Run's free allowance means a small app like this won't be
+  charged.
 - Your **Neon** database connection string (from the Neon dashboard → your
   project → *Connection string*, "Pooled connection"). It looks like:
   `postgresql://user:password@ep-xxx-pooler.eu-central-1.aws.neon.tech/dbname?sslmode=require`
