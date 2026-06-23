@@ -1,0 +1,30 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+# Sensitive values (neon_api_key, auth0_*, smtp_password) are better passed via
+# environment variables (TF_VAR_neon_api_key=...) than written to disk.
+
+# --- GCP ---
+gcp_project_id = "domovoy-prod-1234"
+gcp_region     = "europe-west2"
+github_repo    = "tomnewport/domovoy"
+
+# --- App config (non-secret) ---
+# Leave allowed_hosts/csrf empty for the first apply, then fill in the
+# *.run.app host the first deploy prints and re-apply.
+allowed_hosts        = []
+csrf_trusted_origins = []
+frontend_root        = "https://app.domovoy.example.com/"
+smtp_server          = "smtp.example.com"
+smtp_port            = 587
+smtp_username        = "apikey"
+# smtp_password via TF_VAR_smtp_password
+
+# --- Neon ---
+# neon_api_key via TF_VAR_neon_api_key
+neon_region     = "aws-eu-central-1"
+neon_pg_version = 16
+
+# --- Auth0 ---
+auth0_domain = "dev-xxxx.eu.auth0.com"
+# auth0_tf_client_id / auth0_tf_client_secret via TF_VAR_auth0_tf_client_id etc.
+api_audience = "https://api.domovoy.example.com"
+spa_url      = "https://app.domovoy.example.com"

@@ -10,7 +10,7 @@ quickstart, then dive into the area you need:
 | [DATA_MODEL.md](DATA_MODEL.md) | All six models, their fields and relationships, and key methods. |
 | [API.md](API.md) | The full REST API: every endpoint, its auth mode, and request/response shapes. |
 | [FRONTEND.md](FRONTEND.md) | The Vue 3 SPA: API client, Pinia stores, routing, components, theming. |
-| [DEPLOYMENT_GCP.md](DEPLOYMENT_GCP.md) | Step-by-step guide to set up Google Cloud (Cloud Run + Neon + GitHub Actions) for deployment. |
+| [DEPLOYMENT_GCP.md](DEPLOYMENT_GCP.md) | Creating the cloud accounts; hands off to the Terraform infra (`deploy/terraform/`) for Cloud Run + Neon + Auth0. |
 | [../CLAUDE.md](../CLAUDE.md) | Commands, conventions, and gotchas for contributors/agents. |
 
 ## Live API docs
