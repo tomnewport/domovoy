@@ -12,7 +12,7 @@ github_repo    = "tomnewport/domovoy"
 # *.run.app host the first deploy prints and re-apply.
 allowed_hosts        = []
 csrf_trusted_origins = []
-frontend_root        = "https://app.domovoy.example.com/"
+frontend_root        = "https://domovoy.tdn.sh/"
 smtp_server          = "smtp.example.com"
 smtp_port            = 587
 smtp_username        = "apikey"
@@ -26,5 +26,5 @@ neon_pg_version = 16
 # --- Auth0 ---
 auth0_domain = "dev-xxxx.eu.auth0.com"
 # auth0_tf_client_id / auth0_tf_client_secret via TF_VAR_auth0_tf_client_id etc.
-api_audience = "https://api.domovoy.example.com"
-spa_url      = "https://app.domovoy.example.com"
+api_audience = "https://api.domovoy.tdn.sh"
+spa_url      = "https://domovoy.tdn.sh"
