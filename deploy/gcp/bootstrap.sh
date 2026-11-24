@@ -26,7 +26,8 @@ PROD_SITE="domovoy-tdnsh"
 DEV_SITE="domovoy-tdnsh-dev"
 
 AR_REPO="domovoy"
-WIF_POOL="github"
+# Domovoy-specific pool: a provider for another repo must not share it.
+WIF_POOL="domovoy-github"
 WIF_PROVIDER="domovoy"
 ENVS=(dev prod)
 
@@ -94,13 +95,16 @@ gc artifacts repositories set-cleanup-policies "$AR_REPO" --location="$REGION" \
 log "Workload Identity Federation: pool $WIF_POOL, provider $WIF_PROVIDER"
 if ! exists gc iam workload-identity-pools describe "$WIF_POOL" --location=global; then
   gc iam workload-identity-pools create "$WIF_POOL" --location=global \
-    --display-name="GitHub Actions"
+    --display-name="Domovoy GitHub Actions"
 fi
 WIF_CONDITION="assertion.repository_id == '$GITHUB_REPO_ID' \
 && assertion.repository_owner_id == '$GITHUB_OWNER_ID' \
 && assertion.ref in ['refs/heads/main', 'refs/heads/dev']"
+# repo_ref ("<repository id>/<ref>") lets each deployer binding name the
+# repository as well as the branch.
 WIF_MAPPING="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,\
-attribute.repository=assertion.repository,attribute.ref=assertion.ref"
+attribute.repository=assertion.repository,attribute.ref=assertion.ref,\
+attribute.repo_ref=assertion.repository_id + '/' + assertion.ref"
 if exists gc iam workload-identity-pools providers describe "$WIF_PROVIDER" \
     --location=global --workload-identity-pool="$WIF_POOL"; then
   provider_cmd=update-oidc
@@ -173,10 +177,11 @@ for env in "${ENVS[@]}"; do
     gc projects add-iam-policy-binding "$PROJECT_ID" --condition=None \
       --member="serviceAccount:$deploy_sa" --role="$role" >/dev/null
   done
-  # Only workflow runs on this environment's branch may act as its deployer.
+  # Only workflow runs of this repository on this environment's branch may
+  # act as its deployer.
   gc iam service-accounts add-iam-policy-binding "$deploy_sa" \
     --role=roles/iam.workloadIdentityUser \
-    --member="principalSet://iam.googleapis.com/$WIF_POOL_NAME/attribute.ref/refs/heads/$branch" \
+    --member="principalSet://iam.googleapis.com/$WIF_POOL_NAME/attribute.repo_ref/$GITHUB_REPO_ID/refs/heads/$branch" \
     >/dev/null
 done
 
