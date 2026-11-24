@@ -38,6 +38,16 @@ ALLOWED_HOSTS = settings.domovoy_allowed_hosts
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CSRF_TRUSTED_ORIGINS = settings.domovoy_csrf_trusted_origins
 
+# Behind Firebase Hosting every cookie except "__session" is stripped before the
+# request reaches Django, which breaks the admin (/krimba/) login. Name the
+# session cookie "__session" and keep the CSRF token and flash messages in the
+# session instead of their own cookies. The SPA is unaffected either way: it
+# authenticates with the x-session-key header, not a cookie.
+SESSION_COOKIE_NAME = settings.domovoy_session_cookie_name
+CSRF_USE_SESSIONS = settings.domovoy_csrf_use_sessions
+if CSRF_USE_SESSIONS:
+    MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
+
 CORS_ALLOWED_ORIGINS = settings.domovoy_allowed_cors_origins
 CORS_ALLOW_METHODS = (
     "DELETE",
@@ -78,6 +88,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    # After WhiteNoise, so cacheable static assets keep their far-future headers.
+    "domovoy.middleware.never_cache_by_default",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
