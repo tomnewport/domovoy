@@ -31,6 +31,13 @@ DEBUG = settings.domovoy_django_debug
 
 ALLOWED_HOSTS = settings.domovoy_allowed_hosts
 
+# TLS is terminated by the platform proxy (e.g. Cloud Run), which forwards plain
+# HTTP with X-Forwarded-Proto. Trust it so request.is_secure() is correct and the
+# admin's CSRF Origin check passes. Only safe while the container is reachable
+# solely through that proxy.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = settings.domovoy_csrf_trusted_origins
+
 CORS_ALLOWED_ORIGINS = settings.domovoy_allowed_cors_origins
 CORS_ALLOW_METHODS = (
     "DELETE",
@@ -70,6 +77,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -172,7 +180,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = "api-static/"
-STATIC_ROOT = "api-static"
+STATIC_ROOT = BASE_DIR / "api-static"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

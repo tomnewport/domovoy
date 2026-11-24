@@ -17,6 +17,7 @@ python-dateutil = "^2.9.0.post0"
 pytz = "^2024.2"
 psycopg = {version = "^3.2", extras = ["binary"]}
 dj-database-url = "^2.3"
+whitenoise = "^6.9"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -1,3 +1,11 @@
 domovoy_app
 .gitignore
 .git
+**/node_modules
+**/__pycache__
+**/.ruff_cache
+**/.env
+domovoy/api-static
+# Keep the directory (SQLite's default location) but not local databases.
+domovoy/data/*
+!domovoy/data/Readme.md
