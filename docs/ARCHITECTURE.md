@@ -147,19 +147,35 @@ pieces:
 
 ## Deployment (today vs. target)
 
-**Today** (`.github/workflows/ci.yml` + `deploy/`): on push to `main`/`dev`, CI
-builds the frontend and `scp`s it to a single VPS, builds & pushes the backend
-image to Docker Hub, templates an nginx vhost + `docker-compose.yml`, copies them
-over SSH, and runs `docker-compose up` + migrations. The database is a SQLite
-file on a host volume. There is no automated test gate.
+**Today** (`.github/workflows/ci.yml` + `deploy/`): on push to `main`/`dev`,
+after the `checks` gate, CI:
 
-**Target** (tracked in the Deployment issue): a managed, dockerised host with a
-managed Postgres database, so there is no VM or database to operate by hand, on a
-free/cheap tier. This requires:
+- builds the frontend and `scp`s it to a single VPS,
+- builds and pushes the backend image to Docker Hub,
+- templates an nginx vhost and `docker-compose.yml`, copies them over SSH, and
+  runs `docker-compose up` and then the migrations.
 
-- making the database configurable (read `DATABASE_URL`, add a Postgres driver),
-- pushing the image to a registry the platform can pull from, and
-- running migrations as a release step.
+The database is an SQLite file on a host volume. Each deploy job has a
+per-branch concurrency group, so deploys don't overlap.
 
-Candidate platforms and the trade-offs (Cloud Run + Neon, Fly.io, Render, Koyeb,
-and whether Terraform is worth it at this scale) are discussed in that issue.
+**Target, being trialled in parallel** ([`DEPLOY_GCP.md`](DEPLOY_GCP.md)): GCP
+project `domovoy-tdnsh`, `europe-west2`, with `gcp-dev` from `dev` and
+`gcp-prod` from `main`. The same workflow:
+
+- builds the image into Artifact Registry and deploys it by digest;
+- runs `migrate` as a Cloud Run job against Neon Postgres (AWS eu-west-2) over
+  the direct URL;
+- deploys the API to Cloud Run, which scales to zero, has at most 2 instances,
+  and uses the pooled Neon URL;
+- deploys the SPA to Firebase Hosting, which rewrites `/api`, `/api-static` and
+  `/krimba` to Cloud Run on the same origin.
+
+CI authenticates with Workload Identity Federation, with per-environment
+deployer and runtime service accounts. Secrets live in Secret Manager, and
+GitHub holds only non-secret Environment variables. Because Firebase forwards
+only the `__session` cookie, the GCP config renames the session cookie and keeps
+CSRF state in the session. The SPA's `x-session-key` header auth is unaffected.
+
+Once both GCP environments are verified, the cutover moves the SQLite data into
+Neon and repoints the `tdn.sh` DNS records (hosted at DigitalOcean). The VPS
+jobs are then removed.
