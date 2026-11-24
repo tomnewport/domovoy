@@ -4,6 +4,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class DmvSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
     domovoy_server_secret_key: str
+    # Previous secret keys (a JSON list), still accepted when reading signed
+    # data such as sessions. Lets sessions survive a key change, e.g. the move
+    # from the VPS to GCP.
+    domovoy_server_secret_key_fallbacks: list[str] = []
     domovoy_django_debug: bool = False
     domovoy_allowed_hosts: list[str] = ["localhost", "dom-dev.tdn.sh", "domovoy.tdn.sh"]
     domovoy_smtp_server: str

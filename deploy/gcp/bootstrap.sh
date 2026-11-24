@@ -73,7 +73,8 @@ deployer_sa() { echo "domovoy-$1-deploy@$PROJECT_ID.iam.gserviceaccount.com"; }
 branch_for() { if [[ "$1" == prod ]]; then echo main; else echo dev; fi; }
 site_for() { if [[ "$1" == prod ]]; then echo "$PROD_SITE"; else echo "$DEV_SITE"; fi; }
 # Secrets read by the service (pooled DB URL) and by the migrate job (direct URL).
-SECRETS=(secret-key smtp-password database-url database-url-direct)
+# secret-key-fallbacks is a JSON list of old Django keys (service only).
+SECRETS=(secret-key secret-key-fallbacks smtp-password database-url database-url-direct)
 
 log "Enabling APIs"
 gc services enable \
@@ -223,6 +224,8 @@ for env in "${ENVS[@]}"; do
      printf '%s for $env: ' "\$s"; read -rs v; echo; printf '%s' "\$v" \\
        | gcloud secrets versions add "$service-\$s" --project=$PROJECT_ID --data-file=- ; unset v
    done
+   # No old keys yet (prod gets the VPS key before cutover; see the docs).
+   printf '[]' | gcloud secrets versions add $service-secret-key-fallbacks --project=$PROJECT_ID --data-file=-
 
 EOF
 done

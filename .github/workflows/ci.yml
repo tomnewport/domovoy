@@ -321,7 +321,7 @@ jobs:
               json.dump(env, f)
           PY
           s="$SERVICE"
-          echo "SERVICE_SECRETS=domovoy_server_secret_key=$s-secret-key:latest,domovoy_smtp_password=$s-smtp-password:latest,domovoy_database_url=$s-database-url:latest" >> "$GITHUB_ENV"
+          echo "SERVICE_SECRETS=domovoy_server_secret_key=$s-secret-key:latest,domovoy_server_secret_key_fallbacks=$s-secret-key-fallbacks:latest,domovoy_smtp_password=$s-smtp-password:latest,domovoy_database_url=$s-database-url:latest" >> "$GITHUB_ENV"
           echo "MIGRATE_SECRETS=domovoy_server_secret_key=$s-secret-key:latest,domovoy_smtp_password=$s-smtp-password:latest,domovoy_database_url=$s-database-url-direct:latest" >> "$GITHUB_ENV"
 
       - name: Run migrations

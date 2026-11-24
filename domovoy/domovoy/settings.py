@@ -26,6 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 settings = DmvSettings()
 
 SECRET_KEY = settings.domovoy_server_secret_key
+SECRET_KEY_FALLBACKS = settings.domovoy_server_secret_key_fallbacks
 
 DEBUG = settings.domovoy_django_debug
 
