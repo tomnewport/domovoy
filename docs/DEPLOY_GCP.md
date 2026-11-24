@@ -214,7 +214,23 @@ curl -sI "$SITE/homes/1" | grep -i cache-control          # no-cache (deep link)
 curl -sI "$SITE/api/openapi.json" | grep -iE '^HTTP|cache-control|x-cache'
 # expect 200 and "no-store, ... private"; repeat it: x-cache should never be HIT
 curl -s -o /dev/null -w '%{http_code}\n' "$SITE/api/users/v1/session"   # 401 (not 400/404)
+curl -sI "$SITE/krimba/login/" | grep -i cache-control    # no-store, ... private
+css=$(curl -s "$SITE/krimba/login/" | grep -oE '/api-static/[^"]+\.css' | head -1)
+curl -sI "$SITE$css" | grep -i cache-control              # max-age=315360000, immutable
 ```
+
+To try a `firebase.json` change before merging, deploy it to a temporary
+preview channel of the dev site. The channel uses the same Cloud Run service.
+From the repo root, with `domovoy_app/dist` built:
+
+```sh
+firebase target:apply hosting gcp-dev domovoy-tdnsh-dev --project=domovoy-tdnsh
+firebase hosting:channel:deploy headers-test --only gcp-dev --expires 1h --project=domovoy-tdnsh
+```
+
+Run the checks above with `SITE` set to the channel URL it prints. Then delete
+the `.firebaserc` and `.firebase/` these commands create; CI applies the target
+itself.
 
 - **400 Bad Request** from `/api/...` means `GCP_<ENV>_ALLOWED_HOSTS` doesn't
   include the `Host` that Firebase sends. With `DEBUG` off, Django doesn't log
@@ -395,17 +411,31 @@ admins by email.
   therefore adds `Cache-Control: max-age=0, no-cache, no-store,
   must-revalidate, private` to every response that doesn't set its own
   (`domovoy/middleware.py`). WhiteNoise's static files keep their long-lived
-  headers.
+  headers. Hosting replaces all of these with its own rules, so
+  `firebase.json` repeats them (see "Hosting headers replace the backend's").
 - **SPA caching.** Each Hosting release serves only its own hashed
   `/assets/*`. A browser holding an old `index.html` would therefore request
-  assets that no longer exist and show a blank page. Every non-asset response
-  is sent `no-cache`, using the source glob
-  `!{/api,/api/**,/api-static/**,/krimba,/krimba/**}`. That includes `/` and
-  deep links, which the SPA fallback serves as `index.html`. Only
-  `/assets/**` is `immutable`, and that later rule wins. The backend paths are
-  excluded, so Django's own `no-store, private` is never overridden. This was
-  checked with the Hosting emulator (`firebase-tools@15.35.0`). Confirm it on
-  the first real deploy with the `curl` checks above.
+  assets that no longer exist and show a blank page. So `**` is sent
+  `no-cache`, which covers `/` and deep links (the SPA fallback serves them as
+  `index.html`), and the later `/assets/**` rule makes assets `immutable`.
+  When several header rules match a path, the last one wins.
+- **Hosting headers replace the backend's.** On live Hosting, a matching
+  `headers` rule replaces the `Cache-Control` that Cloud Run sent on 2xx and
+  3xx responses (4xx responses keep the backend's). Backend paths can't be
+  left out, so `firebase.json` gives them the backend's own values:
+  - `/api`, `/api/**`, `/krimba`, `/krimba/**`: Django's
+    `max-age=0, no-cache, no-store, must-revalidate, private`. On GCP this
+    also overrides any view that sets its own `Cache-Control`, so change
+    `firebase.json` too if one ever needs to.
+  - `/api-static/**`: WhiteNoise's `public, max-age=60`, or, for hashed file
+    names (`name.<12 hex>.ext`, matched by a `regex` rule),
+    `public, max-age=315360000, immutable`.
+
+  The first version tried to exclude the backend with a negated glob,
+  `!{/api,/api/**,…}`. The Hosting emulator honoured it, but live Hosting
+  applied it to every path, so API and admin responses lost
+  `no-store, private`. Check header changes on a preview channel (see
+  "Verifying after a deploy"), not with the emulator.
 - **Path coverage.** The rewrites list both `/api` and `/api/**` (and likewise
   `/krimba`), because `/x/**` doesn't match `/x` itself.
 
