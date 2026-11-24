@@ -285,18 +285,31 @@ export interface components {
         };
         /** UserRegistrationRequest */
         UserRegistrationRequest: {
-            /** Name Short */
+            /**
+             * Name Short
+             * @example Herb
+             */
             name_short: string;
-            /** Name Full */
+            /**
+             * Name Full
+             * @example Herberto Berherbo
+             */
             name_full: string;
             /**
              * Email
              * Format: email
              */
             email: string;
-            /** Username */
+            /**
+             * Username
+             * @example HBerherbo
+             */
             username: string;
-            /** Password */
+            /**
+             * Password
+             * @example Pa$$w0rd
+             * @example A good password is easy to remember
+             */
             password: string;
         };
         /** HashcashConfig */
@@ -310,6 +323,7 @@ export interface components {
             /**
              * Time
              * @description Current time in format YYMMDDhhmm
+             * @example 2411301459
              */
             time: string;
         };

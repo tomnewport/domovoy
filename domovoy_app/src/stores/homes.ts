@@ -18,9 +18,7 @@ export const useHomesStore = defineStore('homes', () => {
     } else {
       homes.value = data
     }
-    while (true) {
-      const resolver = waiters.pop()
-      if (!resolver) break
+    for (let resolver = waiters.pop(); resolver; resolver = waiters.pop()) {
       resolver()
     }
     finishLoading()
