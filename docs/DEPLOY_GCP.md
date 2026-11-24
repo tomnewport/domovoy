@@ -49,11 +49,18 @@ browser ──https──▶ Firebase Hosting (<site>.web.app, CDN)
   CI also sets `domovoy_session_cookie_name=__session` and
   `domovoy_csrf_use_sessions=true`, which apply only on GCP (see "Firebase
   quirks").
-- **CI → GCP auth** uses Workload Identity Federation. There are no keys. The
-  provider accepts only tokens whose `repository_id` is `862461320`, whose
-  `repository_owner_id` is `8523691`, and whose ref is `refs/heads/main` or
-  `refs/heads/dev`. Each environment has its own deployer, and only its own
-  branch can impersonate it:
+- **CI → GCP auth** uses Workload Identity Federation. There are no keys.
+  - The pool `domovoy-github` is used only for this repository.
+  - Its provider accepts only tokens whose `repository_id` is `862461320`,
+    whose `repository_owner_id` is `8523691`, and whose ref is
+    `refs/heads/main` or `refs/heads/dev`.
+  - Each environment has its own deployer. Its `workloadIdentityUser` binding
+    names both the repository and the branch:
+    `principalSet://…/workloadIdentityPools/domovoy-github/attribute.repo_ref/862461320/refs/heads/<branch>`.
+    `repo_ref` is mapped as `assertion.repository_id + '/' + assertion.ref`.
+    So even if another provider were ever added to the pool, only this repo's
+    `main` can act as the prod deployer, and only its `dev` as the dev
+    deployer.
 
   | Service account | Roles (scope) |
   | --- | --- |
@@ -63,6 +70,12 @@ browser ──https──▶ Firebase Hosting (<site>.web.app, CDN)
   The deployer cannot change who may invoke the service. The bootstrap script
   makes the service public (`allUsers` → `run.invoker`) once, because Firebase
   Hosting calls it anonymously.
+
+  `firebasehosting.admin` can only be granted project-wide, so the dev deployer
+  could technically deploy the prod Hosting site. This is accepted: both
+  deployers can only be reached from this repository's own `main` / `dev`
+  branches, and the prod API, secrets and database stay out of the dev
+  deployer's reach.
 
 ### CI flow (`.github/workflows/ci.yml`, job `deploy-gcp`)
 
@@ -81,7 +94,8 @@ repository variable `GCP_DEPLOY_ENABLED` is `true`. Its concurrency group
 
 ## One-time setup (in this order)
 
-You need `gcloud` (logged in as project owner), Node + `firebase-tools`
+The script runs with macOS's stock bash 3.2 as well as newer versions. You
+need `gcloud` (logged in as project owner), Node + `firebase-tools`
 (`npm i -g firebase-tools && firebase login`), and optionally `gh`. The script
 uses `gh` to double-check the repository IDs.
 
@@ -161,7 +175,7 @@ variable for that branch is missing (it never falls back to the other set).
 | --- | --- |
 | `GCP_PROJECT_ID` | `domovoy-tdnsh` |
 | `GCP_REGION` | `europe-west2` |
-| `GCP_WIF_PROVIDER` | `projects/429045293034/locations/global/workloadIdentityPools/github/providers/domovoy` |
+| `GCP_WIF_PROVIDER` | `projects/429045293034/locations/global/workloadIdentityPools/domovoy-github/providers/domovoy` |
 | `GCP_SMTP_SERVER`, `GCP_SMTP_PORT`, `GCP_SMTP_USERNAME` | your SMTP settings, shared by both environments (placeholders are fine for now) |
 | `GCP_DEV_DEPLOYER_SA` | `domovoy-dev-deploy@domovoy-tdnsh.iam.gserviceaccount.com` |
 | `GCP_DEV_RUNTIME_SA` | `domovoy-dev-run@domovoy-tdnsh.iam.gserviceaccount.com` |
@@ -195,7 +209,8 @@ Most Firebase behaviour can only be confirmed against a real deploy:
 
 ```sh
 SITE=https://domovoy-tdnsh-dev.web.app
-curl -sI "$SITE/" | grep -i cache-control                 # no-cache (index.html)
+curl -sI "$SITE/" | grep -i cache-control                 # no-cache (SPA fallback)
+curl -sI "$SITE/homes/1" | grep -i cache-control          # no-cache (deep link)
 curl -sI "$SITE/api/openapi.json" | grep -iE '^HTTP|cache-control|x-cache'
 # expect 200 and "no-store, ... private"; repeat it: x-cache should never be HIT
 curl -s -o /dev/null -w '%{http_code}\n' "$SITE/api/users/v1/session"   # 401 (not 400/404)
@@ -381,5 +396,41 @@ admins by email.
   must-revalidate, private` to every response that doesn't set its own
   (`domovoy/middleware.py`). WhiteNoise's static files keep their long-lived
   headers.
+- **SPA caching.** Each Hosting release serves only its own hashed
+  `/assets/*`. A browser holding an old `index.html` would therefore request
+  assets that no longer exist and show a blank page. Every non-asset response
+  is sent `no-cache`, using the source glob
+  `!{/api,/api/**,/api-static/**,/krimba,/krimba/**}`. That includes `/` and
+  deep links, which the SPA fallback serves as `index.html`. Only
+  `/assets/**` is `immutable`, and that later rule wins. The backend paths are
+  excluded, so Django's own `no-store, private` is never overridden. This was
+  checked with the Hosting emulator (`firebase-tools@15.35.0`). Confirm it on
+  the first real deploy with the `curl` checks above.
 - **Path coverage.** The rewrites list both `/api` and `/api/**` (and likewise
   `/krimba`), because `/x/**` doesn't match `/x` itself.
+
+## Troubleshooting the CI deploy
+
+- **`firebase deploy` can't authenticate** with the Workload Identity
+  credentials file. `gcloud` steps succeed, but firebase-tools rejects the
+  `external_account` ADC. Fall back to `google-github-actions/auth` (with
+  `workload_identity_provider` / `service_account`) in place of the
+  "Authenticate to Google Cloud" step, pinned to a commit SHA:
+  - v3.0.0: `7c6bc770dae815cd3e89ee6cdf493a5fab2cc093`
+  - v2.1.13: `c200f3691d83b41bf9bbd8638997a462592937ed`
+
+  These SHAs came from `git ls-remote`. Check them against the tags before
+  use.
+- **`PERMISSION_DENIED` from `gcloud run deploy` or `run jobs execute`**:
+  `run.developer` is granted on the individual service and job. If that turns
+  out to be too narrow for an operation, grant `roles/run.developer` on the
+  project to that environment's deployer. Note that this lets the dev deployer
+  modify the prod service as well.
+- **`firebase deploy` fails listing Cloud Functions**: firebase-tools checks
+  for functions backends when rewrites exist, and tolerates a 403 there. If it
+  fails some other way, enabling `cloudfunctions.googleapis.com` (no functions
+  are created) should get past it.
+- **The job is skipped**: the repository variable `GCP_DEPLOY_ENABLED` isn't
+  `true`, or the push wasn't to `main` / `dev`.
+- **"Missing repository variables: …"**: add the variables it names (see step
+  4). The job never falls back to the other environment's values.
