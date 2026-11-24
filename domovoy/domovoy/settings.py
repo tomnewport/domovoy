@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 
+import dj_database_url
+
 from domovoy.environment import DmvSettings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -108,12 +110,31 @@ WSGI_APPLICATION = "domovoy.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "data" / "db.sqlite3",
+# With no domovoy_database_url set, fall back to the zero-config SQLite file.
+# In production this is a Neon Postgres URL, e.g.
+# postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/domovoy?sslmode=require
+if settings.domovoy_database_url:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            settings.domovoy_database_url,
+            # Under ASGI each request may run in a different thread, so Django's
+            # persistent connections are not reliably reused or closed. Open a
+            # connection per request and let Neon's pooled (PgBouncer) endpoint
+            # absorb the cost; health checks only apply to persistent connections.
+            conn_max_age=0,
+            conn_health_checks=False,
+        )
     }
-}
+    # PgBouncer in transaction mode (Neon's pooled endpoint) does not support
+    # server-side cursors across transactions.
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "data" / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
