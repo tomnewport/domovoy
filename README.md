@@ -158,6 +158,7 @@ by [`environment.py`](domovoy/domovoy/environment.py)):
 | `domovoy_django_debug` | | `true`/`false`, defaults to `false` |
 | `domovoy_allowed_hosts` | | JSON list of allowed hostnames |
 | `domovoy_allowed_cors_origins` | | JSON list of allowed CORS origins |
+| `domovoy_csrf_trusted_origins` | | JSON list of origins trusted for CSRF on unsafe requests (e.g. the admin login) when served over HTTPS behind a proxy, e.g. `["https://domovoy.tdn.sh"]`. Defaults to `[]`, which is fine for local HTTP dev |
 | `domovoy_frontend_root` | ✅ | Public base URL of the frontend (used in email links) |
 | `domovoy_smtp_server` | ✅ | SMTP host |
 | `domovoy_smtp_port` | ✅ | SMTP port |
