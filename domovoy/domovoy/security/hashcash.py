@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import itertools
+import logging
 from datetime import timedelta, datetime
 
 from ninja.security import APIKeyHeader
@@ -8,6 +9,8 @@ from ninja.security import APIKeyHeader
 from django.utils import timezone
 from django.conf import settings
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 HASHCASH_SECRET = settings.SECRET_KEY
 HASHCASH_VERSION = "1"
@@ -117,5 +120,5 @@ class Hashcash(APIKeyHeader):
         try:
             return verify_header(key)
         except (AttributeError, ValueError) as exc:
-            print(key, exc)
+            logger.info("Rejected hashcash header: %s", exc)
             return False

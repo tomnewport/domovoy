@@ -3,7 +3,7 @@ from typing import Optional, Union, Literal
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 from ninja import Router
-from datetime import date, timedelta, time, datetime
+from datetime import date, timedelta
 from django.utils import timezone
 
 from domovoy.apps.regular_job.rules import SnoozeOption

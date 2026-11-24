@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Q, Manager
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
 from ninja import Router
 from ninja.errors import HttpError
@@ -13,7 +13,6 @@ from domovoy.apps.dmv_user.api.v1.schemas import (
 from domovoy.security.hashcash import (
     Hashcash,
     get_hashcash_config,
-    make_header,
     HashcashConfig,
 )
 

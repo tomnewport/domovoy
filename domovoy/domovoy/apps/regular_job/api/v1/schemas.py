@@ -57,17 +57,6 @@ class RegularJobDefinitionSchema(ModelSchema):
         ]
 
 
-class RegularJobDefinitionEditSchema(Schema):
-    name: Optional[str]
-    description: Optional[str]
-    open_for_days: Optional[int]
-    criticality: Optional[CriticalityLevel]
-    rules: Optional[Ruleset]
-    value_min: Optional[int]
-    value_max: Optional[int]
-    value_default: Optional[int]
-
-
 class CreateRegularJobDefinitionRequest(Schema):
     name: constr(min_length=5, max_length=100)
     description: constr(max_length=1000)

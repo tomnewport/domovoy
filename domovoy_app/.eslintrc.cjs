@@ -11,5 +11,11 @@ module.exports = {
   ],
   parserOptions: {
     ecmaVersion: 'latest'
+  },
+  rules: {
+    // Existing single-word component names (Login, Logout, Register); renaming is out of scope for CI.
+    'vue/multi-word-component-names': 'off',
+    // Vuetify's v-data-table uses dotted slot names such as `v-slot:item.name`.
+    'vue/valid-v-slot': ['error', { allowModifiers: true }]
   }
 }
