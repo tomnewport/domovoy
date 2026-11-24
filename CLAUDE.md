@@ -11,13 +11,14 @@ Domovoy is a household chore-sharing app: a **Django 5 + django-ninja** backend
 
 ## Commands
 
-Backend (from `domovoy/`, uses Poetry):
+Backend (from `domovoy/`, uses Poetry; the project file is the root
+`pyproject.toml`, which Poetry finds from the subdirectory):
 
 ```sh
 poetry install
 poetry run python manage.py migrate
 poetry run python manage.py runserver        # serves /api/ and /api/docs
-poetry run python manage.py test             # test runner (no tests yet)
+poetry run python manage.py test             # discovers domovoy/apps/*/tests.py
 poetry run ruff check .                        # lint (ruff is a dev dependency)
 ```
 
@@ -36,6 +37,11 @@ npm run domovoy-types  # regenerate src/services/domovoy/schema.d.ts from the ru
 - The backend reads config from `domovoy/.env` via `environment.py`
   (pydantic-settings). All variables are prefixed `domovoy_`. There is no
   `.env.example` yet — see the README's Configuration table.
+- There is one Poetry project: the root `pyproject.toml` + `poetry.lock` (the
+  `Dockerfile` installs from there too). Don't add a `pyproject.toml` under
+  `domovoy/`; Poetry would pick it up instead of the root one.
+- The outer `domovoy/` directory is not a Python package. Don't add an
+  `__init__.py` to it: test discovery would then look for `domovoy.domovoy`.
 - The custom user model is `dmv_user.DmvUser` (`AUTH_USER_MODEL`). Always use
   `get_user_model()`.
 - Frontend types are **generated** from the backend OpenAPI schema. After any API

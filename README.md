@@ -92,7 +92,7 @@ Comprehensive reference docs for the current state of the app live in
 
 ```
 .
-├── domovoy/                  # Django backend (Poetry project)
+├── domovoy/                  # Django backend (run manage.py from here)
 │   ├── domovoy/
 │   │   ├── api.py            # NinjaAPI root, mounts the v1 routers
 │   │   ├── settings.py       # Django settings (reads DmvSettings)
@@ -107,6 +107,7 @@ Comprehensive reference docs for the current state of the app live in
 ├── domovoy_app/             # Vue 3 + Vuetify frontend (npm)
 │   └── src/services/domovoy # API client generated from the OpenAPI schema
 ├── deploy/                  # docker-compose + nginx site config (current deploy)
+├── pyproject.toml          # backend Poetry project (with poetry.lock)
 ├── Dockerfile              # backend image
 └── .github/workflows/ci.yml # build + SSH deploy to a single VPS
 ```
@@ -119,10 +120,11 @@ Comprehensive reference docs for the current state of the app live in
 
 ```sh
 cd domovoy
-poetry install
+poetry install                 # uses the root pyproject.toml + poetry.lock
 # create domovoy/.env with the variables in "Configuration" below
 poetry run python manage.py migrate
 poetry run python manage.py runserver
+poetry run python manage.py test
 ```
 
 The API is then served at `http://127.0.0.1:8000/api/` with interactive docs at
