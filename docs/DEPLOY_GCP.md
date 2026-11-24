@@ -35,8 +35,9 @@ browser ──https──▶ Firebase Hosting (<site>.web.app, CDN)
   CI deploys the image **digest**, not the tag. A cleanup policy
   ([`ar-cleanup-policy.json`](../deploy/gcp/ar-cleanup-policy.json)) keeps the
   10 newest images per environment and deletes anything else older than 30 days.
-- **Secrets** live in Secret Manager. Each environment has four:
-  `domovoy-<env>-secret-key`, `-smtp-password`, `-database-url` (pooled) and
+- **Secrets** live in Secret Manager. Each environment has five:
+  `domovoy-<env>-secret-key`, `-secret-key-fallbacks` (a JSON list of old
+  keys, service only), `-smtp-password`, `-database-url` (pooled) and
   `-database-url-direct` (migrate job only). They are mounted as env vars with
   `--set-secrets`. Only that environment's runtime service account can read them.
   GitHub holds **no secrets** for this path.
@@ -64,7 +65,7 @@ browser ──https──▶ Firebase Hosting (<site>.web.app, CDN)
 
   | Service account | Roles (scope) |
   | --- | --- |
-  | `domovoy-<env>-run` (runtime) | `secretmanager.secretAccessor` on its 4 secrets only |
+  | `domovoy-<env>-run` (runtime) | `secretmanager.secretAccessor` on its 5 secrets only |
   | `domovoy-<env>-deploy` (CI) | `run.developer` on its service and migrate job; `iam.serviceAccountUser` on its runtime SA; `artifactregistry.writer` on the `domovoy` repo; `firebasehosting.admin` and `serviceusage.serviceUsageConsumer` on the project (no narrower scope exists) |
 
   The deployer cannot change who may invoke the service. The bootstrap script
@@ -153,11 +154,19 @@ for env in dev prod; do
     printf '%s' "$v" | gcloud secrets versions add "domovoy-$env-$s" --project=domovoy-tdnsh --data-file=-
     unset v
   done
+  printf '[]' | gcloud secrets versions add "domovoy-$env-secret-key-fallbacks" --project=domovoy-tdnsh --data-file=-
 done
 ```
 
 - Add the Django secret key **once**. A new version invalidates sessions and
-  hashcash nonces on the next deploy.
+  hashcash nonces on the next deploy, unless the old key goes into
+  `-secret-key-fallbacks` (see "Moving sessions over" in the cutover runbook).
+- `-secret-key-fallbacks` starts as `[]`. Prod gets the VPS key before the
+  cutover.
+- Setups bootstrapped before `-secret-key-fallbacks` existed: re-run
+  `bootstrap.sh` (it creates the secret and its IAM binding), then add `[]`
+  for both environments with the `printf` line above, **before** deploying a
+  commit whose CI mounts it.
 - SMTP isn't used yet (see `utils/email.py`), but the setting is required, so
   any placeholder works for the SMTP password.
 - To rotate a secret, add a version and redeploy (re-run the workflow). Services
@@ -305,6 +314,23 @@ because the app is read-only/offline for the duration.
    - `GCP_PROD_ALLOWED_HOSTS` += `"domovoy.tdn.sh"`, and
      `GCP_DEV_ALLOWED_HOSTS` += `"dom-dev.tdn.sh"`
    - leave `GCP_<ENV>_FRONTEND_ROOT` on web.app until the switch.
+4. **Moving sessions over.** Imported sessions are signed with the VPS's
+   Django key, and the SPA keeps its session key per origin, which
+   `domovoy.tdn.sh` stays. Unless prod accepts the old key, everyone has to
+   log in again. If prod's `-secret-key-fallbacks` doesn't already hold it,
+   copy the running VPS app's key there (it is never printed), then redeploy
+   prod (re-run the latest `main` workflow):
+
+   ```sh
+   ssh <vps> 'docker exec main_domovoy_1 python manage.py shell -c "import sys; from django.conf import settings; sys.stdout.write(settings.SECRET_KEY)"' \
+     | python3 -c 'import json, sys; sys.stdout.write(json.dumps([sys.stdin.read()]))' \
+     | gcloud secrets versions add domovoy-prod-secret-key-fallbacks --project=domovoy-tdnsh --data-file=-
+   ```
+
+   On first use, each old session is re-signed with the GCP key under the
+   same session key (`security/session_key.py`). Django's own fallback
+   handling would issue a new session key instead, which the SPA never
+   learns, so it would log people out.
 
 **Cutover (prod)**
 
@@ -338,6 +364,10 @@ the VPS container. That is harmless, because no DNS points at it, but it is
 wasted work. Keep the VPS SQLite file and the dump until GCP has run for a
 while.
 
+A few weeks after the cutover, retire the VPS key: add `[]` as a new version
+of `domovoy-prod-secret-key-fallbacks`, destroy the old version, and redeploy.
+Only sessions that haven't been used since the cutover are logged out.
+
 ## Rollback
 
 - **Before DNS changes**, there is nothing to roll back. Restart the VPS
@@ -365,7 +395,7 @@ writing, so check current pricing:
   The cost of scale-to-zero is a cold start of a few seconds on the first
   request.
 - **Artifact Registry**: 0.5 GB free; the cleanup policy keeps it small.
-- **Secret Manager**: 8 secrets at a few cents per active version per month,
+- **Secret Manager**: 10 secrets at a few cents per active version per month,
   beyond a small free allowance. Old versions also count while enabled, so
   disable or destroy superseded ones after rotating.
 - **Firebase Hosting**: free storage and transfer quotas are well above this

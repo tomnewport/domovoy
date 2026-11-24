@@ -1,7 +1,12 @@
+import os
 import re
+from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.contrib.sessions.backends.db import SessionStore
 from django.test import Client, TestCase, override_settings
+
+from domovoy.environment import DmvSettings
 
 RUN_APP_HOST = "domovoy-dev-abc123-nw.a.run.app"
 WEB_APP_ORIGIN = "https://domovoy-dev.web.app"
@@ -88,3 +93,59 @@ class CacheControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("no-store", response["Cache-Control"])
         self.assertIn("private", response["Cache-Control"])
+
+
+OLD_KEY = "old-vps-key-for-tests"
+NEW_KEY = "new-gcp-key-for-tests"
+
+
+class SecretKeyFallbackTests(TestCase):
+    """Sessions copied from the VPS are signed with the VPS's SECRET_KEY."""
+
+    def setUp(self):
+        user = get_user_model().objects.create_user(
+            username="member",
+            email="member@example.com",
+            password="pw-for-tests",
+            email_verified=True,
+            name_short="Member",
+            name_full="Household Member",
+        )
+        # A real login on the old server: the session data is signed, and its
+        # auth hash computed, with the old key.
+        with override_settings(SECRET_KEY=OLD_KEY, SECRET_KEY_FALLBACKS=[]):
+            client = Client()
+            client.force_login(user)
+            self.session_key = client.session.session_key
+
+    def _active_session(self):
+        # The SPA sends the key it got at login; it never sees a new one.
+        return Client().get(
+            "/api/users/v1/session", HTTP_X_SESSION_KEY=self.session_key
+        )
+
+    @override_settings(SECRET_KEY=NEW_KEY, SECRET_KEY_FALLBACKS=[])
+    def test_old_session_is_rejected_after_key_change(self):
+        self.assertEqual(self._active_session().status_code, 401)
+
+    @override_settings(SECRET_KEY=NEW_KEY, SECRET_KEY_FALLBACKS=[OLD_KEY])
+    def test_old_session_keeps_working_with_fallback(self):
+        for _ in range(3):
+            response = self._active_session()
+            self.assertEqual(response.status_code, 200, response.content[:500])
+            self.assertEqual(response.json()["username"], "member")
+
+    def test_session_is_resigned_with_the_new_key_in_place(self):
+        with override_settings(SECRET_KEY=NEW_KEY, SECRET_KEY_FALLBACKS=[OLD_KEY]):
+            self.assertEqual(self._active_session().status_code, 200)
+        # Same key, and the old key is no longer needed to read it.
+        self.assertTrue(SessionStore().exists(self.session_key))
+        with override_settings(SECRET_KEY=NEW_KEY, SECRET_KEY_FALLBACKS=[]):
+            self.assertEqual(self._active_session().status_code, 200)
+
+    def test_fallbacks_are_read_as_a_json_list(self):
+        env = {"domovoy_server_secret_key_fallbacks": '["a", "b"]'}
+        with mock.patch.dict(os.environ, env):
+            self.assertEqual(
+                DmvSettings().domovoy_server_secret_key_fallbacks, ["a", "b"]
+            )

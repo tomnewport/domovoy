@@ -40,7 +40,11 @@ There are no data migrations (`RunPython`) and no model signals, so a
      `RegularJobDefinition.assignment_notes` (JSON) and session data store raw
      user IDs.
    - Sessions are kept on purpose, so users stay logged in (login links are not
-     emailed yet).
+     emailed yet). Session data is signed with `SECRET_KEY`, so this only
+     works if the target uses the same key or lists the old one in
+     `domovoy_server_secret_key_fallbacks`. On first use, such a session is
+     re-signed with the new key under the same session key
+     (`security/session_key.py`).
 
 3. **Check string lengths.** SQLite does not enforce `max_length`; Postgres
    does, and `loaddata` will fail on an over-long value. This should return no

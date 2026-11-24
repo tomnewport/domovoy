@@ -157,6 +157,7 @@ by [`environment.py`](domovoy/domovoy/environment.py)):
 | Variable | Required | Description |
 | --- | --- | --- |
 | `domovoy_server_secret_key` | ✅ | Django `SECRET_KEY` (also used to sign hashcash nonces) |
+| `domovoy_server_secret_key_fallbacks` | | JSON list of previous secret keys (Django `SECRET_KEY_FALLBACKS`), so sessions survive a key change. Default `[]` |
 | `domovoy_django_debug` | | `true`/`false`, defaults to `false` |
 | `domovoy_allowed_hosts` | | JSON list of allowed hostnames |
 | `domovoy_allowed_cors_origins` | | JSON list of allowed CORS origins |
