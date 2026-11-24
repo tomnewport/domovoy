@@ -14,3 +14,8 @@ class DmvSettings(BaseSettings):
     domovoy_csrf_trusted_origins: list[str] = []
     domovoy_frontend_root: str
     domovoy_database_url: str | None = None
+    # Firebase Hosting forwards only a cookie named "__session" to Cloud Run, so
+    # the GCP deployment sets these to "__session" / True. Defaults keep Django's
+    # standard cookie behaviour (the VPS deployment).
+    domovoy_session_cookie_name: str = "sessionid"
+    domovoy_csrf_use_sessions: bool = False

@@ -8,6 +8,7 @@ quickstart, then dive into the area you need:
 | --- | --- |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System overview, backend layout, the rules engine, the assignment & scoring algorithm, auth/hashcash, and the deployment picture. |
 | [DATA_MODEL.md](DATA_MODEL.md) | All six models, their fields and relationships, and key methods. |
+| [DEPLOY_GCP.md](DEPLOY_GCP.md) | The GCP deployment (Cloud Run, Firebase Hosting, Neon): one-time setup, verifying, login links in Cloud Logging, cutover and rollback. |
 | [DATABASE.md](DATABASE.md) | Configuring SQLite vs Postgres (`domovoy_database_url`) and moving existing data from SQLite to Postgres. |
 | [API.md](API.md) | The full REST API: every endpoint, its auth mode, and request/response shapes. |
 | [FRONTEND.md](FRONTEND.md) | The Vue 3 SPA: API client, Pinia stores, routing, components, theming. |

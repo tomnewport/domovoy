@@ -167,24 +167,34 @@ by [`environment.py`](domovoy/domovoy/environment.py)):
 | `domovoy_smtp_username` | ✅ | SMTP username |
 | `domovoy_smtp_password` | ✅ | SMTP password |
 | `domovoy_database_url` | | Postgres URL, e.g. `postgresql://user:pass@host/db?sslmode=require`. Unset uses SQLite at `domovoy/data/db.sqlite3`. See [`docs/DATABASE.md`](docs/DATABASE.md), which also covers moving data from SQLite |
+| `domovoy_session_cookie_name` | | Session cookie name, default `sessionid`. Set to `__session` behind Firebase Hosting, which strips all other cookies ([`docs/DEPLOY_GCP.md`](docs/DEPLOY_GCP.md)) |
+| `domovoy_csrf_use_sessions` | | `true` stores the CSRF token and admin flash messages in the session instead of their own cookies. Default `false`; `true` on GCP |
 
 ---
 
 ## Deployment
 
-The current production deployment is a GitHub Actions workflow
-([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) that, on push to `main`
-or `dev`:
+There are two deployments, run in parallel until the cutover. Both are driven by
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) on push to `main` (prod)
+or `dev`, after the `checks` job passes.
+
+**VPS (current production).** CI:
 
 1. builds the Vue frontend and `scp`s the static files to a single VPS,
 2. builds and pushes the backend Docker image to Docker Hub,
 3. templates a `docker-compose.yml` + nginx site config and `scp`s them to the VPS,
 4. SSHes in to `docker-compose pull && up -d` and run migrations.
 
-This works but is tied to one hand-managed VM, an `scp`'d SQLite file, secrets
-passed as env blobs, and no test gate. Migrating to a managed, dockerised host
-with a managed database (no VM or DB to babysit) is tracked in the issues — see
-the **Deployment** issue and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+This path is tied to one hand-managed VM, an SQLite file on a volume, and
+secrets passed as env blobs.
+
+**GCP (being trialled).** CI builds the image into Artifact Registry and runs
+migrations as a Cloud Run job against Neon Postgres. It then deploys the API to
+Cloud Run (scale to zero) and the SPA to Firebase Hosting, which rewrites
+`/api`, `/api-static` and `/krimba` to Cloud Run. Auth uses Workload Identity
+Federation, secrets live in Secret Manager, and config lives in repository-level
+Actions variables. `main` deploys prod and `dev` deploys dev. See [`docs/DEPLOY_GCP.md`](docs/DEPLOY_GCP.md)
+for setup, the cutover runbook and rollback.
 
 ---
 
