@@ -1,8 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 
-from domovoy.apps.regular_job.rules import generate_dates
 
 User = get_user_model()
 

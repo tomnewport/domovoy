@@ -33,7 +33,7 @@ async function create() {
       </v-btn>
     </template>
 
-    <template v-slot:default="{ isActive }">
+    <template v-slot:default>
       <v-card>
         <v-toolbar color="secondary">
           <v-btn icon="mdi-close" @click="dialog = false"></v-btn>

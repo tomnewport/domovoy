@@ -13,3 +13,4 @@ class DmvSettings(BaseSettings):
     domovoy_allowed_cors_origins: list[str] = []
     domovoy_csrf_trusted_origins: list[str] = []
     domovoy_frontend_root: str
+    domovoy_database_url: str | None = None

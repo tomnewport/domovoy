@@ -32,7 +32,9 @@ export async function apiFetch<ResponseData, Request = void>(
   let responseData = null
   try {
     responseData = await response.json()
-  } catch (err) {}
+  } catch {
+    // Response has no JSON body (e.g. 204); leave responseData as null
+  }
   return {
     data: responseData as ResponseData,
     response: response

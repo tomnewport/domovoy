@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from typing import List, Tuple
+from typing import List
 
 import pydantic
 from django.contrib.auth import get_user_model

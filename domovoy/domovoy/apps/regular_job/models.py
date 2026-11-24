@@ -1,9 +1,8 @@
 import datetime
 from datetime import timedelta
 from random import randrange, random
-from typing import Optional, Tuple, List
+from typing import Optional
 
-from dateutil.relativedelta import relativedelta
 from django.db import models, transaction
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -72,9 +71,9 @@ class RegularJobDefinition(models.Model):
             SnoozeOption(date=v.ideal_date, label=f"Skip +{i+1}")
             for i, v in enumerate(skips)
         ]
-        options.append(SnoozeOption(date=today + timedelta(days=1), label=f"Tomorrow"))
-        options.append(SnoozeOption(date=today + timedelta(days=2), label=f"+2 days"))
-        options.append(SnoozeOption(date=today + timedelta(days=7), label=f"+1 week"))
+        options.append(SnoozeOption(date=today + timedelta(days=1), label="Tomorrow"))
+        options.append(SnoozeOption(date=today + timedelta(days=2), label="+2 days"))
+        options.append(SnoozeOption(date=today + timedelta(days=7), label="+1 week"))
 
         dates = set()
 

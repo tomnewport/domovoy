@@ -9,7 +9,7 @@ job using a transparent, score-balancing algorithm that keeps the workload fair
 over time, works around people's holidays, and nudges overdue tasks back into
 view with bonus points.
 
-- **Backend:** Django 5 + [django-ninja](https://django-ninja.dev/) REST API (SQLite today)
+- **Backend:** Django 5 + [django-ninja](https://django-ninja.dev/) REST API (SQLite by default, Postgres via `domovoy_database_url`)
 - **Frontend:** Vue 3 + Vuetify 3 + Pinia single-page app
 - **Auth:** passwordless email magic-links (optional password), with
   [hashcash](https://en.wikipedia.org/wiki/Hashcash) proof-of-work to throttle abuse
@@ -164,6 +164,7 @@ by [`environment.py`](domovoy/domovoy/environment.py)):
 | `domovoy_smtp_port` | ✅ | SMTP port |
 | `domovoy_smtp_username` | ✅ | SMTP username |
 | `domovoy_smtp_password` | ✅ | SMTP password |
+| `domovoy_database_url` | | Postgres URL, e.g. `postgresql://user:pass@host/db?sslmode=require`. Unset uses SQLite at `domovoy/data/db.sqlite3`. See [`docs/DATABASE.md`](docs/DATABASE.md), which also covers moving data from SQLite |
 
 ---
 
