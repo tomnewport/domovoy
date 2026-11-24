@@ -159,11 +159,11 @@ The database is an SQLite file on a host volume. Each deploy job has a
 per-branch concurrency group, so deploys don't overlap.
 
 **Target, being trialled in parallel** ([`DEPLOY_GCP.md`](DEPLOY_GCP.md)): GCP
-project `domovoy-tdnsh`, `europe-west2`, with `gcp-dev` from `dev` and
-`gcp-prod` from `main`. The same workflow:
+project `domovoy-tdnsh`, `europe-west2`, with dev deployed from `dev` and
+prod from `main`. The same workflow:
 
 - builds the image into Artifact Registry and deploys it by digest;
-- runs `migrate` as a Cloud Run job against Neon Postgres (AWS eu-west-2) over
+- runs `migrate` as a Cloud Run job against Neon Postgres (AWS eu-west-2, branches `production` and `dev`) over
   the direct URL;
 - deploys the API to Cloud Run, which scales to zero, has at most 2 instances,
   and uses the pooled Neon URL;
@@ -172,7 +172,8 @@ project `domovoy-tdnsh`, `europe-west2`, with `gcp-dev` from `dev` and
 
 CI authenticates with Workload Identity Federation, with per-environment
 deployer and runtime service accounts. Secrets live in Secret Manager, and
-GitHub holds only non-secret Environment variables. Because Firebase forwards
+GitHub holds only non-secret repository variables (no GitHub Environments,
+which private repos on GitHub Free may lack). Because Firebase forwards
 only the `__session` cookie, the GCP config renames the session cookie and keeps
 CSRF state in the session. The SPA's `x-session-key` header auth is unaffected.
 

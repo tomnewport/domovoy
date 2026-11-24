@@ -4,10 +4,10 @@ This deployment runs **in parallel** with the VPS deployment
 ([`README.md#deployment`](../README.md#deployment)) until the cutover below.
 There are two environments:
 
-| GitHub Environment | Branch | Cloud Run service | Firebase Hosting site | Neon branch |
-| --- | --- | --- | --- | --- |
-| `gcp-dev` | `dev` | `domovoy-dev` | `domovoy-tdnsh-dev.web.app` | `dev` |
-| `gcp-prod` | `main` | `domovoy-prod` | `domovoy-tdnsh.web.app` | `main` |
+| Environment | Git branch | Variable prefix | Cloud Run service | Firebase Hosting site | Neon branch |
+| --- | --- | --- | --- | --- | --- |
+| dev | `dev` | `GCP_DEV_` | `domovoy-dev` | `domovoy-tdnsh-dev.web.app` | `dev` |
+| prod | `main` | `GCP_PROD_` | `domovoy-prod` | `domovoy-tdnsh.web.app` | `production` |
 
 GCP project `domovoy-tdnsh` (number `429045293034`), region `europe-west2`
 (London). The site names are the defaults in
@@ -25,7 +25,7 @@ browser ──https──▶ Firebase Hosting (<site>.web.app, CDN)
                    Cloud Run service domovoy-<env>   (scale 0..2, uvicorn on $PORT)
                           │ pooled URL (-pooler, PgBouncer)
                           ▼
-                   Neon Postgres, AWS eu-west-2, branch main|dev
+                   Neon Postgres, AWS eu-west-2, branch production|dev
                           ▲ direct URL
                    Cloud Run job domovoy-<env>-migrate (same image, `manage.py migrate`)
 ```
@@ -40,7 +40,12 @@ browser ──https──▶ Firebase Hosting (<site>.web.app, CDN)
   `-database-url-direct` (migrate job only). They are mounted as env vars with
   `--set-secrets`. Only that environment's runtime service account can read them.
   GitHub holds **no secrets** for this path.
-- **Non-secret config** comes from GitHub Environment variables (see below).
+- **Non-secret config** comes from repository-level GitHub Actions variables:
+  shared `GCP_*` ones, plus `GCP_DEV_*` / `GCP_PROD_*`, chosen by branch (see
+  below). GitHub Environments are **not** used, because a private repository
+  on GitHub Free may not have them. The branch restriction they would add is
+  enforced in GCP instead, by the WIF condition and per-branch deployer
+  bindings. The per-branch `concurrency` group serialises deploys.
   CI also sets `domovoy_session_cookie_name=__session` and
   `domovoy_csrf_use_sessions=true`, which apply only on GCP (see "Firebase
   quirks").
@@ -65,12 +70,14 @@ The job runs on push to `main`/`dev`, after `checks` passes, and only when the
 repository variable `GCP_DEPLOY_ENABLED` is `true`. Its concurrency group
 (`gcp-<branch>`) has no cancel-in-progress. It:
 
-1. authenticates with WIF (with `gcloud` itself, no third-party action);
-2. builds and pushes the image, then resolves its digest;
-3. updates the `domovoy-<env>-migrate` job to that digest and runs it with
+1. selects the `GCP_PROD_*` or `GCP_DEV_*` variables by branch, and fails if
+   any is missing;
+2. authenticates with WIF (with `gcloud` itself, no third-party action);
+3. builds and pushes the image, then resolves its digest;
+4. updates the `domovoy-<env>-migrate` job to that digest and runs it with
    `--wait`, which fails the deploy if migrations fail;
-4. deploys the Cloud Run service at that digest;
-5. builds the SPA and deploys the Firebase Hosting target `gcp-<env>`.
+5. deploys the Cloud Run service at that digest;
+6. builds the SPA and deploys the Firebase Hosting target `gcp-<env>`.
 
 ## One-time setup (in this order)
 
@@ -80,15 +87,25 @@ uses `gh` to double-check the repository IDs.
 
 ### 1. Neon
 
-1. Create a Neon project in **AWS eu-west-2 (London)**, with database
-   `domovoy`. Its default branch is `main` (prod).
-2. Create a branch `dev` from `main`.
-3. For **each** branch, copy two connection strings from *Connect*:
+Reuse the existing Neon project `tdnsh` (it may be renamed `domovoy`), which
+is on the free plan in **AWS Europe West 2 (London)**:
+
+1. On the default branch **`production`** (prod), create the role `domovoy` and
+   the database `domovoy` owned by it.
+2. Create a child branch `dev` from `production`. It inherits the role and
+   database.
+3. For **each** branch, copy two connection strings for role `domovoy` and
+   database `domovoy` from *Connect*:
    - **pooled**: "Connection pooling" on, so the host contains `-pooler`. This
      becomes `domovoy-<env>-database-url`.
    - **direct**: pooling off. This becomes `domovoy-<env>-database-url-direct`.
 
    Both strings must include `sslmode=require`. See [DATABASE.md](DATABASE.md).
+
+The free plan suspends idle compute and **archives idle branches**. The first
+query after that wakes or unarchives the branch, which adds a few seconds of
+latency. A slow first request on dev, on top of the Cloud Run cold start, is
+most likely this and not a bug.
 
 ### 2. Bootstrap script
 
@@ -132,29 +149,29 @@ done
 - To rotate a secret, add a version and redeploy (re-run the workflow). Services
   read `:latest` when a revision starts.
 
-### 4. GitHub Environment variables
+### 4. GitHub repository variables
 
-In *Settings → Environments*, create `gcp-dev` and `gcp-prod`. Then add these as
-**variables**, not secrets, with the values the script printed:
+Add these in *Settings → Secrets and variables → Actions → **Variables** → New
+repository variable*. They are variables, not secrets, and no GitHub
+Environments are needed. The script prints the exact values. The deploy job
+picks `GCP_PROD_*` on `main` and `GCP_DEV_*` on `dev`, and fails early if any
+variable for that branch is missing (it never falls back to the other set).
 
-| Variable | Example (`gcp-dev`) |
+| Variable | Example |
 | --- | --- |
 | `GCP_PROJECT_ID` | `domovoy-tdnsh` |
 | `GCP_REGION` | `europe-west2` |
 | `GCP_WIF_PROVIDER` | `projects/429045293034/locations/global/workloadIdentityPools/github/providers/domovoy` |
-| `GCP_DEPLOYER_SA` | `domovoy-dev-deploy@domovoy-tdnsh.iam.gserviceaccount.com` |
-| `GCP_RUNTIME_SA` | `domovoy-dev-run@domovoy-tdnsh.iam.gserviceaccount.com` |
-| `GCP_IMAGE` | `europe-west2-docker.pkg.dev/domovoy-tdnsh/domovoy/domovoy-dev` |
-| `CLOUD_RUN_SERVICE` | `domovoy-dev` |
-| `FIREBASE_SITE` | `domovoy-tdnsh-dev` |
-| `DOMOVOY_ALLOWED_HOSTS` | `["domovoy-dev-<hash>-nw.a.run.app","domovoy-dev-429045293034.europe-west2.run.app","domovoy-tdnsh-dev.web.app","domovoy-tdnsh-dev.firebaseapp.com"]` |
-| `DOMOVOY_CSRF_TRUSTED_ORIGINS` | `["https://domovoy-tdnsh-dev.web.app","https://domovoy-tdnsh-dev.firebaseapp.com"]` |
-| `DOMOVOY_FRONTEND_ROOT` | `https://domovoy-tdnsh-dev.web.app/` (trailing slash; used in login links) |
-| `DOMOVOY_SMTP_SERVER`, `DOMOVOY_SMTP_PORT`, `DOMOVOY_SMTP_USERNAME` | your SMTP settings (placeholders are fine for now) |
-
-Recommended: under each environment's *Deployment branches*, allow only `main`
-(`gcp-prod`) and only `dev` (`gcp-dev`). GCP already enforces this through WIF;
-the branch rule makes the GitHub side match.
+| `GCP_SMTP_SERVER`, `GCP_SMTP_PORT`, `GCP_SMTP_USERNAME` | your SMTP settings, shared by both environments (placeholders are fine for now) |
+| `GCP_DEV_DEPLOYER_SA` | `domovoy-dev-deploy@domovoy-tdnsh.iam.gserviceaccount.com` |
+| `GCP_DEV_RUNTIME_SA` | `domovoy-dev-run@domovoy-tdnsh.iam.gserviceaccount.com` |
+| `GCP_DEV_IMAGE` | `europe-west2-docker.pkg.dev/domovoy-tdnsh/domovoy/domovoy-dev` |
+| `GCP_DEV_SERVICE` | `domovoy-dev` |
+| `GCP_DEV_FIREBASE_SITE` | `domovoy-tdnsh-dev` |
+| `GCP_DEV_ALLOWED_HOSTS` | `["domovoy-dev-<hash>-nw.a.run.app","domovoy-dev-429045293034.europe-west2.run.app","domovoy-tdnsh-dev.web.app","domovoy-tdnsh-dev.firebaseapp.com"]` |
+| `GCP_DEV_CSRF_TRUSTED_ORIGINS` | `["https://domovoy-tdnsh-dev.web.app","https://domovoy-tdnsh-dev.firebaseapp.com"]` |
+| `GCP_DEV_FRONTEND_ROOT` | `https://domovoy-tdnsh-dev.web.app/` (trailing slash; used in login links) |
+| `GCP_PROD_*` | the same eight, for `domovoy-prod` / site `domovoy-tdnsh` |
 
 Finally, add the **repository** variable `GCP_DEPLOY_ENABLED=true` (*Settings →
 Secrets and variables → Actions → Variables*). Until you do, the `deploy-gcp`
@@ -163,12 +180,12 @@ job is skipped, so merging this PR before bootstrap leaves CI green.
 ### 5. First deploy
 
 1. Push to `dev`, or re-run the latest `dev` workflow run. Watch `deploy-gcp`.
-2. Check the environment (see "Verifying after a deploy").
+2. Check the dev site (see "Verifying after a deploy").
 3. Either seed dev with a copy of the data (below), or create an admin user
    with the **direct** URL. Run this from `domovoy/`, with the other required
    `domovoy_*` variables set to anything:
    `domovoy_database_url='<dev direct url>' poetry run python manage.py createsuperuser`.
-4. Repeat for `main` → `gcp-prod` when ready. Keep prod's database **empty
+4. Repeat for `main` → prod when ready. Keep prod's database **empty
    apart from migrations** until the cutover (no test users), so the cutover
    load is clean. Smoke-test prod with the `curl` checks below.
 
@@ -184,12 +201,12 @@ curl -sI "$SITE/api/openapi.json" | grep -iE '^HTTP|cache-control|x-cache'
 curl -s -o /dev/null -w '%{http_code}\n' "$SITE/api/users/v1/session"   # 401 (not 400/404)
 ```
 
-- **400 Bad Request** from `/api/...` means `DOMOVOY_ALLOWED_HOSTS` doesn't
+- **400 Bad Request** from `/api/...` means `GCP_<ENV>_ALLOWED_HOSTS` doesn't
   include the `Host` that Firebase sends. With `DEBUG` off, Django doesn't log
   this.
 - Log in to the SPA with an email link (see below).
 - Log in to the admin at `$SITE/krimba/`. A 403 "CSRF verification failed"
-  means the Origin isn't in `DOMOVOY_CSRF_TRUSTED_ORIGINS`, or the
+  means the Origin isn't in `GCP_<ENV>_CSRF_TRUSTED_ORIGINS`, or the
   `__session` settings aren't applied.
 
 ## Finding login links (Cloud Logging)
@@ -209,7 +226,7 @@ In the console, use *Logging → Logs Explorer* with the same filter, or open
 to the project can read these links, which are live credentials until used or
 expired.
 
-## Seeding gcp-dev with a trial copy of the data
+## Seeding dev with a trial copy of the data
 
 You run this yourself; CI never touches data. Follow
 [DATABASE.md → Moving existing data](DATABASE.md#moving-existing-data-from-sqlite-to-postgres),
@@ -222,7 +239,7 @@ but you don't need to stop the VPS for a trial:
 3. Load it into the **dev** branch with the **dev direct** URL (DATABASE.md
    step 4). The `migrate` there is a no-op if a deploy already ran it. Load
    before you create any users on dev. If you already created some, reset the
-   branch first (*Neon → Branches → dev → Reset from parent* while `main` is
+   branch first (*Neon → Branches → dev → Reset from parent* while `production` is
    still empty), then re-run the `dev` workflow so the migrate job recreates
    the schema.
 4. Verify the row counts, then log in at the dev site. Session keys live in
@@ -232,7 +249,7 @@ The trial copy holds real household data, so treat the dev site accordingly.
 
 ## Cutover runbook (VPS → GCP)
 
-Prerequisite: both GCP environments have been tested. Do this in a quiet window,
+Prerequisite: both GCP environments (dev and prod) have been tested. Do this in a quiet window,
 because the app is read-only/offline for the duration.
 
 **A day before**
@@ -252,10 +269,11 @@ because the app is read-only/offline for the duration.
    examples from these docs.
 3. Add the custom origin to the GitHub variables and redeploy (re-run the
    workflow):
-   - `DOMOVOY_CSRF_TRUSTED_ORIGINS` += `"https://domovoy.tdn.sh"` (prod) /
-     `"https://dom-dev.tdn.sh"` (dev)
-   - `DOMOVOY_ALLOWED_HOSTS` += `"domovoy.tdn.sh"` / `"dom-dev.tdn.sh"`
-   - leave `DOMOVOY_FRONTEND_ROOT` on web.app until the switch.
+   - `GCP_PROD_CSRF_TRUSTED_ORIGINS` += `"https://domovoy.tdn.sh"`, and
+     `GCP_DEV_CSRF_TRUSTED_ORIGINS` += `"https://dom-dev.tdn.sh"`
+   - `GCP_PROD_ALLOWED_HOSTS` += `"domovoy.tdn.sh"`, and
+     `GCP_DEV_ALLOWED_HOSTS` += `"dom-dev.tdn.sh"`
+   - leave `GCP_<ENV>_FRONTEND_ROOT` on web.app until the switch.
 
 **Cutover (prod)**
 
@@ -264,10 +282,10 @@ because the app is read-only/offline for the duration.
    `cd /opt/applications/domovoy/main && docker-compose stop`.
 2. **Fresh dump** of `/opt/applications/domovoy/main/data/db.sqlite3`, as in
    DATABASE.md steps 1–3.
-3. **Load into Neon `main`** with the **prod direct** URL (DATABASE.md step 4).
+3. **Load into Neon `production`** with the **prod direct** URL (DATABASE.md step 4).
    The database must hold only the schema created by the migrate job. If you
    created anything there while testing, restore the branch to a point before
-   that (*Neon → Branches → main → Restore*).
+   that (*Neon → Branches → production → Restore*).
 4. **Verify** the row counts (DATABASE.md step 5), then log in at
    `https://domovoy-tdnsh.web.app` and check the job list and stats.
 5. **Switch DNS** at DigitalOcean. Replace the existing `domovoy` A record
@@ -276,9 +294,9 @@ because the app is read-only/offline for the duration.
 6. Wait until Firebase shows the domain as *Connected* and serves a valid
    certificate:
    `curl -sI https://domovoy.tdn.sh/ | head -1`.
-7. Set `DOMOVOY_FRONTEND_ROOT=https://domovoy.tdn.sh/` on `gcp-prod` and
+7. Set `GCP_PROD_FRONTEND_ROOT=https://domovoy.tdn.sh/` and
    redeploy, so new login links use the custom domain.
-8. Repeat steps 5–7 for `dom-dev.tdn.sh` / `gcp-dev`. There's no data to move
+8. Repeat steps 5–7 for `dom-dev.tdn.sh` (`GCP_DEV_*`). There's no data to move
    unless you want it.
 
 **After the cutover**, open a follow-up PR that removes the VPS jobs
@@ -353,8 +371,8 @@ admins by email.
   The defaults (`sessionid` / `False`) leave the VPS unchanged.
 - **Host vs Origin.** Behind the rewrite, `Host` is expected to be the run.app
   hostname, with the browser's `Origin` being the web.app or custom domain.
-  `DOMOVOY_ALLOWED_HOSTS` lists both run.app forms plus the Firebase hostnames,
-  and `DOMOVOY_CSRF_TRUSTED_ORIGINS` lists the public origins.
+  `GCP_<ENV>_ALLOWED_HOSTS` lists both run.app forms plus the Firebase hostnames,
+  and `GCP_<ENV>_CSRF_TRUSTED_ORIGINS` lists the public origins.
   `USE_X_FORWARDED_HOST` stays off: the run.app URL is publicly reachable, so
   trusting `X-Forwarded-Host` would let anyone choose the host Django sees.
 - **CDN caching.** Firebase's CDN may cache rewritten responses that ask to be

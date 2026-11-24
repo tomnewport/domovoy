@@ -190,8 +190,8 @@ secrets passed as env blobs.
 migrations as a Cloud Run job against Neon Postgres. It then deploys the API to
 Cloud Run (scale to zero) and the SPA to Firebase Hosting, which rewrites
 `/api`, `/api-static` and `/krimba` to Cloud Run. Auth uses Workload Identity
-Federation, and secrets live in Secret Manager. Environments are `gcp-dev`
-(`dev`) and `gcp-prod` (`main`). See [`docs/DEPLOY_GCP.md`](docs/DEPLOY_GCP.md)
+Federation, secrets live in Secret Manager, and config lives in repository-level
+Actions variables. `main` deploys prod and `dev` deploys dev. See [`docs/DEPLOY_GCP.md`](docs/DEPLOY_GCP.md)
 for setup, the cutover runbook and rollback.
 
 ---
