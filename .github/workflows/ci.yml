@@ -97,6 +97,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: checks
     if: github.event_name == 'push'
+    # One deploy per branch at a time: overlapping runs raced on the VPS.
+    concurrency:
+      group: vps-frontend-${{ github.ref_name }}
+      cancel-in-progress: false
 
     steps:
       - name: Checkout Repository
@@ -133,6 +137,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [checks, build-frontend]
     if: github.event_name == 'push'
+    # Overlapping runs failed with "a prune operation is already running".
+    concurrency:
+      group: vps-api-${{ github.ref_name }}
+      cancel-in-progress: false
 
     steps:
       - name: Checkout Repository
@@ -202,3 +210,154 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker system prune --all -f && docker-compose pull && docker-compose up -d"
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "cd ${DEPLOY_DIR} && docker-compose exec -T domovoy poetry run python manage.py migrate"
           rm -f ~/.ssh/id_rsa
+
+  # Parallel GCP deployment (docs/DEPLOY_GCP.md): Cloud Run + Firebase Hosting.
+  # main -> gcp-prod, dev -> gcp-dev. Off until the repository variable
+  # GCP_DEPLOY_ENABLED is "true" (set once deploy/gcp/bootstrap.sh has run).
+  deploy-gcp:
+    name: Deploy to GCP
+    runs-on: ubuntu-latest
+    needs: checks
+    if: >-
+      github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+      && vars.GCP_DEPLOY_ENABLED == 'true'
+    environment:
+      name: ${{ github.ref_name == 'main' && 'gcp-prod' || 'gcp-dev' }}
+      url: https://${{ vars.FIREBASE_SITE }}.web.app
+    concurrency:
+      group: gcp-${{ github.ref_name }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      FIREBASE_TOOLS_VERSION: 15.35.0
+      HOSTING_TARGET: ${{ github.ref_name == 'main' && 'gcp-prod' || 'gcp-dev' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Workload Identity Federation with gcloud itself, so no third-party
+      # action handles GCP credentials. The config file holds only the runner's
+      # short-lived OIDC request token; gcloud and firebase-tools exchange it
+      # for a token of the deployer service account.
+      - name: Authenticate to Google Cloud
+        run: |
+          creds="$RUNNER_TEMP/gcp-credentials.json"
+          gcloud iam workload-identity-pools create-cred-config "$GCP_WIF_PROVIDER" \
+            --service-account="$GCP_DEPLOYER_SA" \
+            --credential-source-url="$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://iam.googleapis.com/$GCP_WIF_PROVIDER" \
+            --credential-source-headers="Authorization=Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            --credential-source-type=json --credential-source-field-name=value \
+            --output-file="$creds"
+          gcloud auth login --cred-file="$creds" --quiet
+          gcloud config set project "$GCP_PROJECT_ID"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$creds" >> "$GITHUB_ENV"
+          echo "CLOUDSDK_CORE_PROJECT=$GCP_PROJECT_ID" >> "$GITHUB_ENV"
+        env:
+          GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_DEPLOYER_SA: ${{ vars.GCP_DEPLOYER_SA }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Build and push API image
+        id: image
+        env:
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_IMAGE: ${{ vars.GCP_IMAGE }}
+        run: |
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          docker build -t "$GCP_IMAGE:$GITHUB_SHA" .
+          docker push "$GCP_IMAGE:$GITHUB_SHA"
+          # Deploy the immutable digest, not the tag.
+          digest="$(docker inspect --format '{{index .RepoDigests 0}}' "$GCP_IMAGE:$GITHUB_SHA")"
+          echo "ref=$digest" >> "$GITHUB_OUTPUT"
+          echo "Image: $digest" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write runtime configuration
+        env:
+          DOMOVOY_ALLOWED_HOSTS: ${{ vars.DOMOVOY_ALLOWED_HOSTS }}
+          DOMOVOY_CSRF_TRUSTED_ORIGINS: ${{ vars.DOMOVOY_CSRF_TRUSTED_ORIGINS }}
+          DOMOVOY_FRONTEND_ROOT: ${{ vars.DOMOVOY_FRONTEND_ROOT }}
+          DOMOVOY_SMTP_SERVER: ${{ vars.DOMOVOY_SMTP_SERVER }}
+          DOMOVOY_SMTP_PORT: ${{ vars.DOMOVOY_SMTP_PORT }}
+          DOMOVOY_SMTP_USERNAME: ${{ vars.DOMOVOY_SMTP_USERNAME }}
+          SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+        # JSON is valid YAML, and avoids gcloud's comma-splitting of
+        # --set-env-vars for the list-valued settings.
+        run: |
+          python3 - <<'PY'
+          import json, os
+          env = {
+              "domovoy_allowed_hosts": os.environ["DOMOVOY_ALLOWED_HOSTS"],
+              "domovoy_csrf_trusted_origins": os.environ["DOMOVOY_CSRF_TRUSTED_ORIGINS"],
+              "domovoy_frontend_root": os.environ["DOMOVOY_FRONTEND_ROOT"],
+              "domovoy_smtp_server": os.environ["DOMOVOY_SMTP_SERVER"],
+              "domovoy_smtp_port": os.environ["DOMOVOY_SMTP_PORT"],
+              "domovoy_smtp_username": os.environ["DOMOVOY_SMTP_USERNAME"],
+              # Firebase Hosting forwards only the __session cookie.
+              "domovoy_session_cookie_name": "__session",
+              "domovoy_csrf_use_sessions": "true",
+              # Login links are print()ed (utils/email.py) and read from Cloud
+              # Logging; write stdout unbuffered so none wait in a buffer.
+              "PYTHONUNBUFFERED": "1",
+          }
+          for key in ("domovoy_allowed_hosts", "domovoy_csrf_trusted_origins"):
+              json.loads(env[key])  # fail early on a malformed variable
+          with open(os.path.join(os.environ["RUNNER_TEMP"], "env.yaml"), "w") as f:
+              json.dump(env, f)
+          PY
+          s="$SERVICE"
+          echo "SERVICE_SECRETS=domovoy_server_secret_key=$s-secret-key:latest,domovoy_smtp_password=$s-smtp-password:latest,domovoy_database_url=$s-database-url:latest" >> "$GITHUB_ENV"
+          echo "MIGRATE_SECRETS=domovoy_server_secret_key=$s-secret-key:latest,domovoy_smtp_password=$s-smtp-password:latest,domovoy_database_url=$s-database-url-direct:latest" >> "$GITHUB_ENV"
+
+      - name: Run migrations
+        env:
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
+          SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          gcloud run jobs deploy "$SERVICE-migrate" --region="$GCP_REGION" --quiet \
+            --image="$IMAGE" --service-account="$GCP_RUNTIME_SA" \
+            --env-vars-file="$RUNNER_TEMP/env.yaml" --set-secrets="$MIGRATE_SECRETS" \
+            --command=python --args=manage.py,migrate,--noinput \
+            --max-retries=0 --task-timeout=10m
+          gcloud run jobs execute "$SERVICE-migrate" --region="$GCP_REGION" --wait
+
+      - name: Deploy Cloud Run service
+        env:
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
+          SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          gcloud run deploy "$SERVICE" --region="$GCP_REGION" --quiet \
+            --image="$IMAGE" --service-account="$GCP_RUNTIME_SA" \
+            --env-vars-file="$RUNNER_TEMP/env.yaml" --set-secrets="$SERVICE_SECRETS" \
+            --min-instances=0 --max-instances=2 --cpu=1 --memory=512Mi \
+            --cpu-boost --timeout=60s
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: domovoy_app/package-lock.json
+
+      - name: Build frontend
+        working-directory: domovoy_app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy Firebase Hosting
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          FIREBASE_SITE: ${{ vars.FIREBASE_SITE }}
+        run: |
+          firebase() { npx --yes "firebase-tools@$FIREBASE_TOOLS_VERSION" --project="$GCP_PROJECT_ID" --non-interactive "$@"; }
+          firebase target:apply hosting "$HOSTING_TARGET" "$FIREBASE_SITE"
+          firebase deploy --only "hosting:$HOSTING_TARGET" \
+            --message "${GITHUB_SHA::12} $GITHUB_REF_NAME"

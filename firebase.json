@@ -1,0 +1,38 @@
+{
+  "hosting": [
+    {
+      "target": "gcp-prod",
+      "public": "domovoy_app/dist",
+      "ignore": ["firebase.json", "**/.*"],
+      "rewrites": [
+        { "source": "/api", "run": { "serviceId": "domovoy-prod", "region": "europe-west2" } },
+        { "source": "/api/**", "run": { "serviceId": "domovoy-prod", "region": "europe-west2" } },
+        { "source": "/api-static/**", "run": { "serviceId": "domovoy-prod", "region": "europe-west2" } },
+        { "source": "/krimba", "run": { "serviceId": "domovoy-prod", "region": "europe-west2" } },
+        { "source": "/krimba/**", "run": { "serviceId": "domovoy-prod", "region": "europe-west2" } },
+        { "source": "**", "destination": "/index.html" }
+      ],
+      "headers": [
+        { "source": "/assets/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+        { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+      ]
+    },
+    {
+      "target": "gcp-dev",
+      "public": "domovoy_app/dist",
+      "ignore": ["firebase.json", "**/.*"],
+      "rewrites": [
+        { "source": "/api", "run": { "serviceId": "domovoy-dev", "region": "europe-west2" } },
+        { "source": "/api/**", "run": { "serviceId": "domovoy-dev", "region": "europe-west2" } },
+        { "source": "/api-static/**", "run": { "serviceId": "domovoy-dev", "region": "europe-west2" } },
+        { "source": "/krimba", "run": { "serviceId": "domovoy-dev", "region": "europe-west2" } },
+        { "source": "/krimba/**", "run": { "serviceId": "domovoy-dev", "region": "europe-west2" } },
+        { "source": "**", "destination": "/index.html" }
+      ],
+      "headers": [
+        { "source": "/assets/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+        { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+      ]
+    }
+  ]
+}
