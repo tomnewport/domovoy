@@ -223,37 +223,39 @@ EOF
 done
 
 cat <<EOF
-2. In GitHub (Settings -> Environments), create environments gcp-dev and
-   gcp-prod with these *variables* (no secrets are needed):
+2. Add these repository variables in GitHub: Settings -> Secrets and
+   variables -> Actions -> Variables -> New repository variable. They are not
+   secrets, and GitHub Environments are not used.
+
+   GCP_PROJECT_ID=$PROJECT_ID
+   GCP_REGION=$REGION
+   GCP_WIF_PROVIDER=$WIF_PROVIDER_NAME
+   GCP_SMTP_SERVER=<smtp host>
+   GCP_SMTP_PORT=<smtp port>
+   GCP_SMTP_USERNAME=<smtp username>
 
 EOF
 for env in "${ENVS[@]}"; do
   service="domovoy-$env"
   site="$(site_for "$env")"
+  p="GCP_$(echo "$env" | tr '[:lower:]' '[:upper:]')"
   run_url="$(gc run services describe "$service" --region="$REGION" --format='value(status.url)' 2>/dev/null || true)"
   run_host="${run_url#https://}"
   hosts="\"$service-$PROJECT_NUMBER.$REGION.run.app\",\"$site.web.app\",\"$site.firebaseapp.com\""
   [[ -n "$run_host" ]] && hosts="\"$run_host\",$hosts"
   cat <<EOF
-   --- gcp-$env ---
-   GCP_PROJECT_ID=$PROJECT_ID
-   GCP_REGION=$REGION
-   GCP_WIF_PROVIDER=$WIF_PROVIDER_NAME
-   GCP_DEPLOYER_SA=$(deployer_sa "$env")
-   GCP_RUNTIME_SA=$(runtime_sa "$env")
-   GCP_IMAGE=$AR_HOST/$PROJECT_ID/$AR_REPO/$service
-   CLOUD_RUN_SERVICE=$service
-   FIREBASE_SITE=$site
-   DOMOVOY_ALLOWED_HOSTS=[$hosts]
-   DOMOVOY_CSRF_TRUSTED_ORIGINS=["https://$site.web.app","https://$site.firebaseapp.com"]
-   DOMOVOY_FRONTEND_ROOT=https://$site.web.app/
-   DOMOVOY_SMTP_SERVER=<smtp host>
-   DOMOVOY_SMTP_PORT=<smtp port>
-   DOMOVOY_SMTP_USERNAME=<smtp username>
+   ${p}_DEPLOYER_SA=$(deployer_sa "$env")
+   ${p}_RUNTIME_SA=$(runtime_sa "$env")
+   ${p}_IMAGE=$AR_HOST/$PROJECT_ID/$AR_REPO/$service
+   ${p}_SERVICE=$service
+   ${p}_FIREBASE_SITE=$site
+   ${p}_ALLOWED_HOSTS=[$hosts]
+   ${p}_CSRF_TRUSTED_ORIGINS=["https://$site.web.app","https://$site.firebaseapp.com"]
+   ${p}_FRONTEND_ROOT=https://$site.web.app/
 
 EOF
 done
 cat <<EOF
-3. Add the repository variable GCP_DEPLOY_ENABLED=true (Settings -> Secrets
-   and variables -> Actions -> Variables) to turn the GCP deploy jobs on.
+3. When the secrets and variables are in place, add the repository variable
+   GCP_DEPLOY_ENABLED=true to turn on the deploy-gcp CI job.
 EOF
