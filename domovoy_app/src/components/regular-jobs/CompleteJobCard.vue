@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
-import { useRegularJobStore, type RegularJobDefinition } from '@/stores/regular-job'
+import {
+  AlreadyDoneError,
+  useRegularJobStore,
+  type RegularJobDefinition
+} from '@/stores/regular-job'
 import { useCurrentUser } from '@/lookups/user'
 import { formatNaturalDate } from '@/utils/dates'
 const { jobDefinition, onClose } = defineProps<{
@@ -27,28 +31,39 @@ onMounted(() => {
 
 const snoozeState = computed(() => regularJobStore.snoozeOptionsFor(jobDefinition))
 
+function onFailure(err: unknown, fallback: string) {
+  if (err instanceof AlreadyDoneError) {
+    toast.info(`${jobDefinition.name} was already done, so nothing changed.`)
+    onClose()
+  } else {
+    toast.error(err instanceof Error ? err.message : fallback)
+  }
+}
+
 async function claim() {
-  if (!jobDefinition.id) throw new Error('No definition Id')
+  // Ignore a second press while the first is on its way.
+  if (busy.value || !jobDefinition.id) return
   busy.value = 'claim'
   try {
-    await regularJobStore.claim({ definitionId: jobDefinition.id, value: value.value })
+    await regularJobStore.claim({ definition: jobDefinition, value: value.value })
     onClose()
   } catch (err) {
-    toast.error(err instanceof Error ? err.message : 'Could not claim this job')
+    onFailure(err, 'Could not claim this job')
   } finally {
     busy.value = null
   }
 }
 
 async function snooze(date: string) {
+  if (busy.value) return
   busy.value = 'snooze'
   snoozingTo.value = date
   try {
-    await regularJobStore.snooze(jobDefinition.id || -1, date)
+    await regularJobStore.snooze(jobDefinition, date)
     toast.success(`${jobDefinition.name} snoozed until ${formatNaturalDate(new Date(date))}`)
     onClose()
   } catch (err) {
-    toast.error(err instanceof Error ? err.message : 'Could not snooze this job')
+    onFailure(err, 'Could not snooze this job')
   } finally {
     busy.value = null
     snoozingTo.value = null

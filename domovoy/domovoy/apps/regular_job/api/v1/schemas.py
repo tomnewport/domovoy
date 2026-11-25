@@ -10,12 +10,6 @@ from domovoy.apps.regular_job.rules import Ruleset, RuleComputeResult
 from domovoy.apps.regular_job.stats import HomeStatistics
 
 
-class ClaimResponse(Schema):
-    value: int
-    statistics: HomeStatistics
-    result: Optional[RuleComputeResult]
-
-
 class JobCompletionSchema(Schema):
     """One completed job, for activity feeds."""
 
@@ -71,6 +65,15 @@ class RegularJobDefinitionSchema(ModelSchema):
         ]
 
 
+class ClaimResponse(Schema):
+    value: int
+    statistics: HomeStatistics
+    result: Optional[RuleComputeResult]
+    # The job after the claim (next assignee and dates), so the client can
+    # show it straight away instead of the occurrence just done.
+    definition: RegularJobDefinitionSchema
+
+
 class CreateRegularJobDefinitionRequest(Schema):
     name: constr(min_length=5, max_length=100)
     description: constr(max_length=1000)
@@ -81,6 +84,13 @@ class CreateRegularJobDefinitionRequest(Schema):
 
 class CreateRegularJobInstanceRequest(Schema):
     value: Optional[int] = None
+    # Which occurrence is being completed: the job's `next_assigned_date` as
+    # the client last saw it. Every claim, snooze or reassignment sets a new
+    # one (the due date can stay the same: a daily job done early is due
+    # "tomorrow" again), so if it has changed the occurrence was already dealt
+    # with and the claim is refused with 409. A repeated or retried claim
+    # can't count twice. Omitted: complete whatever occurrence is current.
+    assigned_at: Optional[datetime] = None
 
 
 class RegularJobDefinitionEditSchema(Schema):

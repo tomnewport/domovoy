@@ -1,6 +1,7 @@
 from typing import Optional, Union, Literal
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.http import HttpRequest
 from ninja import Query, Router
 from datetime import date, datetime, timedelta
@@ -101,26 +102,52 @@ def list_instances(
     return definition.instances.all()
 
 
-@regular_jobs_v1_router.post(
-    "/definitions/{definition_id}/instances", response={200: ClaimResponse}
-)
-def create_instance(
-    request: HttpRequest, definition_id: int, data: CreateRegularJobInstanceRequest
-) -> ClaimResponse:
-    user_homes = request.user.home_set.all()
+def same_occurrence(current: Optional[datetime], seen: Optional[datetime]) -> bool:
+    """Whether the occurrence the client saw (its `next_assigned_date`) is still current."""
+    # Each claim, snooze or reassignment sets a new timestamp. The API sends
+    # it to the millisecond (Django's JSON encoder), so compare at that
+    # precision: claims even a moment apart still differ.
+    if current is None or seen is None:
+        return current is seen
+    return current.replace(microsecond=current.microsecond // 1000 * 1000) == seen.replace(
+        microsecond=seen.microsecond // 1000 * 1000
+    )
+
+
+def locked_definition(request: HttpRequest, definition_id: int) -> RegularJobDefinition:
+    """The job, row-locked for the rest of the transaction, if it's in your homes."""
     try:
-        definition = RegularJobDefinition.objects.get(
-            id=definition_id, home__in=user_homes
+        return RegularJobDefinition.objects.select_for_update().get(
+            id=definition_id, home__in=request.user.home_set.all()
         )
     except RegularJobDefinition.DoesNotExist:
         raise HttpError(404, "Job definition not found")
+
+
+ALREADY_DONE = "Already done: this job has moved on since you opened it."
+
+
+@regular_jobs_v1_router.post(
+    "/definitions/{definition_id}/instances", response={200: ClaimResponse}
+)
+@transaction.atomic
+def create_instance(
+    request: HttpRequest, definition_id: int, data: CreateRegularJobInstanceRequest
+) -> ClaimResponse:
+    # Locked, so two claims for the same occurrence can't both pass the check.
+    definition = locked_definition(request, definition_id)
+    if data.assigned_at is not None and not same_occurrence(
+        definition.next_assigned_date, data.assigned_at
+    ):
+        raise HttpError(409, ALREADY_DONE)
 
     value = definition.claim(request.user, data.value)
 
     return ClaimResponse(
         value=value,
         statistics=get_statistics(request.user, definition.home, 30),
-        result=definition.assignment_notes
+        result=definition.assignment_notes,
+        definition=definition,
     )
 
 
@@ -140,16 +167,22 @@ def get_snooze_options(request: HttpRequest, definition_id: int) -> HomeStatisti
 
 
 @regular_jobs_v1_router.post(
-    "/definitions/{definition_id}/snooze", response={200: None}
+    "/definitions/{definition_id}/snooze", response={200: RegularJobDefinitionSchema}
 )
-def snooze(request: HttpRequest, definition_id: int, new_date: date):
-    user_homes = request.user.home_set.all()
-    try:
-        definition = RegularJobDefinition.objects.get(
-            id=definition_id, home__in=user_homes
-        )
-    except RegularJobDefinition.DoesNotExist:
-        raise HttpError(404, "Job definition not found")
+@transaction.atomic
+def snooze(
+    request: HttpRequest,
+    definition_id: int,
+    new_date: date,
+    assigned_at: Optional[datetime] = None,
+):
+    """Move the current occurrence to `new_date`. With `assigned_at` (the
+    job's `next_assigned_date` as you saw it), refused with 409 if that
+    occurrence has since been dealt with, so a stale snooze can't move the
+    next one instead."""
+    definition = locked_definition(request, definition_id)
+    if assigned_at is not None and not same_occurrence(definition.next_assigned_date, assigned_at):
+        raise HttpError(409, ALREADY_DONE)
 
     definition.next_assigned_date = timezone.now()
     definition.next_assigned_due_date = before_midnight(new_date)
@@ -157,6 +190,7 @@ def snooze(request: HttpRequest, definition_id: int, new_date: date):
         days=definition.open_for_days
     )
     definition.save()
+    return definition
 
 
 @regular_jobs_v1_router.get("/statistics", response={200: HomeStatistics})

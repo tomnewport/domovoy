@@ -24,6 +24,15 @@ export interface Motivation {
   result: RuleComputeResult | null
 }
 
+// The occurrence was already completed or moved (by you a moment ago, or by
+// someone else): nothing was changed.
+export class AlreadyDoneError extends Error {
+  constructor() {
+    super('Already done: this job had moved on, so nothing was changed.')
+    this.name = 'AlreadyDoneError'
+  }
+}
+
 export interface SnoozeOptionsState {
   options: SnoozeOption[] | null
   error: boolean
@@ -105,20 +114,43 @@ export const useRegularJobStore = defineStore('regular-job', () => {
     return request
   }
 
-  async function claim({ definitionId, value }: { definitionId: number; value?: number }) {
+  // Put the server's copy of a job into the list straight away, so a job
+  // just claimed or snoozed shows its next occurrence rather than looking
+  // undone (and claimable) until the next refresh.
+  function replaceDefinition(updated: RegularJobDefinition) {
+    const others = definitions.value.filter((def) => def.id !== updated.id)
+    definitions.value = [...others, updated]
+    const key = cacheKey()
+    if (key) writeCache(key, definitions.value)
+  }
+
+  async function claim({
+    definition,
+    value
+  }: {
+    definition: RegularJobDefinition
+    value?: number
+  }) {
     const result = await client.POST('/api/regular_jobs/v1/definitions/{definition_id}/instances', {
       headers: getHeaders(),
-      params: { path: { definition_id: definitionId } },
-      body: { value }
+      params: { path: { definition_id: definition.id as number } },
+      // Names the occurrence being completed: if it's already been done
+      // (a double tap, a retry, a stale list), the server refuses with 409.
+      body: { value, assigned_at: definition.next_assigned_date }
     })
+    if (result.response.status === 409) {
+      void reload()
+      throw new AlreadyDoneError()
+    }
     if (!result.data) throw new Error('Could not claim this job')
+    replaceDefinition(result.data.definition)
     motivation.value = {
       open: true,
       valueChange: result.data.value,
       stats: result.data.statistics,
       result: result.data.result
     }
-    // Refresh in the background: the congratulations dialog is already up.
+    // Refresh the rest in the background: the congratulations dialog is up.
     void reload()
   }
 
@@ -157,15 +189,20 @@ export const useRegularJobStore = defineStore('regular-job', () => {
     return snoozeOptions.value[snoozeKey(job)]
   }
 
-  async function snooze(jobId: number, date: string) {
+  async function snooze(definition: RegularJobDefinition, date: string) {
     const result = await client.POST('/api/regular_jobs/v1/definitions/{definition_id}/snooze', {
       headers: getHeaders(),
       params: {
-        path: { definition_id: jobId },
-        query: { new_date: date }
+        path: { definition_id: definition.id as number },
+        query: { new_date: date, assigned_at: definition.next_assigned_date ?? undefined }
       }
     })
-    if (result.error) throw new Error('Could not snooze this job')
+    if (result.response.status === 409) {
+      void reload()
+      throw new AlreadyDoneError()
+    }
+    if (!result.data) throw new Error('Could not snooze this job')
+    replaceDefinition(result.data)
     void reload()
   }
 

@@ -155,16 +155,26 @@ change, the assignment is recomputed. `200` → `RegularJobDefinitionSchema`.
 assigned/start/due/completed timestamps).
 
 ### `POST /definitions/{definition_id}/instances` — claim / complete a job
-Body — `CreateRegularJobInstanceRequest` (`value` optional; clamped to the job's
-min/max). Awards points (plus overdue bonus if a non-assignee rescues a late
-job), re-normalises scores, records the instance, and re-assigns the next
+Body — `CreateRegularJobInstanceRequest`:
+- `value` (optional): clamped to the job's min/max.
+- `assigned_at` (optional, but the app always sends it): the job's
+  `next_assigned_date` as the client last saw it, naming the occurrence being
+  completed. Every claim, snooze or reassignment sets a new one, so if it no
+  longer matches, that occurrence was already dealt with and the claim is
+  refused with **`409`** and nothing changes. This is what stops a double tap or
+  a retry from counting twice. (The due date can't do this: a daily job done
+  early is due "tomorrow" again.) The job row is locked while this is checked.
+
+Awards points (plus overdue bonus if a non-assignee rescues a late job),
+re-normalises scores, records the instance, and re-assigns the next
 occurrence.
 `200` → `ClaimResponse`:
 ```jsonc
 {
   "value": 12,                 // points awarded
   "statistics": { … },         // HomeStatistics (per-member daily scores, 30d)
-  "result": { … }              // RuleComputeResult for the new assignment
+  "result": { … },             // RuleComputeResult for the new assignment
+  "definition": { … }          // the job now: next assignee and dates
 }
 ```
 
@@ -173,8 +183,9 @@ occurrence.
 
 
 ### `POST /definitions/{definition_id}/snooze` — snooze to a date
-Query param `new_date`. Reschedules the current assignment's due/start dates.
-`200` → empty.
+Query params `new_date`, and optionally `assigned_at` (as for claims: `409` if
+that occurrence has since been completed or moved). Reschedules the current
+assignment's due/start dates. `200` → `RegularJobDefinitionSchema`, the job now.
 
 ### `GET /statistics` — points per member per day, for one home
 Query params `home_id` and `days` (1–365, default 30). `404` if you aren't a
