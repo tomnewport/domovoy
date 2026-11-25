@@ -1,41 +1,44 @@
 <script setup lang="ts">
-import { computed, ref, Fragment } from 'vue'
+import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import Login from '@/components/auth/Login.vue'
+import AuthLayout from './AuthLayout.vue'
+import Login from './Login.vue'
 import SendEmailLink from './SendEmailLink.vue'
+
 const sessionStore = useSessionStore()
+const route = useRoute()
 
-const loginMode = ref<'email' | 'password'>('password')
-
-const loginRequired = computed(() => {
-  const sessionExpires = new Date(sessionStore.session?.session_expires || 0)
-  const now = new Date()
-  const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000)
-  return sessionExpires < oneHourFromNow
-})
+// `/?login=email` opens on the email-link tab (used by the link-error page).
+const loginMode = ref<'password' | 'email'>(route.query.login === 'email' ? 'email' : 'password')
 </script>
 <template>
-  <template v-if="loginRequired">
-    <v-container class="fill-height d-flex align-center justify-center" fluid>
-      <v-card class="pa-5" max-width="400">
-        <v-card-title class="text-h5">Please log in</v-card-title>
-        <v-card-subtitle
-          >Or <RouterLink to="/register">click here</RouterLink> to create a new
-          account.</v-card-subtitle
-        >
-        <Login v-if="loginMode === 'password'" />
-        <a href="#" v-if="loginMode === 'password'" v-on:click="loginMode = 'email'"
-          >Log in with a link</a
-        >
+  <!-- A stored key is being checked and nothing is cached: brief splash, not a login form. -->
+  <AuthLayout v-if="sessionStore.checking" compact>
+    <div class="d-flex flex-column align-center pa-8" role="status">
+      <v-progress-circular indeterminate color="primary" size="40" />
+      <div class="text-body-2 text-medium-emphasis mt-4">Opening your homes…</div>
+    </div>
+  </AuthLayout>
 
-        <SendEmailLink v-if="loginMode === 'email'" />
-        <a href="#" v-if="loginMode === 'email'" v-on:click="loginMode = 'password'"
-          >Log in with your password</a
-        >
-      </v-card>
-    </v-container>
-  </template>
-  <template v-else>
-    <slot></slot>
-  </template>
+  <AuthLayout v-else-if="!sessionStore.loggedIn">
+    <v-tabs v-model="loginMode" grow color="primary">
+      <v-tab value="password" prepend-icon="mdi-lock-outline">Password</v-tab>
+      <v-tab value="email" prepend-icon="mdi-email-fast-outline">Email link</v-tab>
+    </v-tabs>
+    <v-card-text class="pa-6">
+      <v-window v-model="loginMode">
+        <v-window-item value="password"><Login /></v-window-item>
+        <v-window-item value="email"><SendEmailLink /></v-window-item>
+      </v-window>
+    </v-card-text>
+    <template #below>
+      <div class="text-center text-body-2">
+        New to Domovoy?
+        <v-btn to="/register" variant="text" color="primary" class="px-2">Create an account</v-btn>
+      </div>
+    </template>
+  </AuthLayout>
+
+  <slot v-else></slot>
 </template>

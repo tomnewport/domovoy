@@ -3,12 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.ico" />
-    <link rel="manifest" href="manifest.json" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#00273a" />
     <title>Domovoy</title>
+    <style>
+      /* Shown until the app mounts and replaces #app, so the first paint is the
+         logo on the app's own background rather than a blank page. */
+      html,
+      body {
+        margin: 0;
+        background: #00273a;
+      }
+      .boot-splash {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(
+            120% 60% at 50% 0%,
+            rgba(202, 138, 255, 0.28) 0%,
+            transparent 60%
+          ),
+          #00273a;
+      }
+      .boot-splash img {
+        width: 88px;
+        height: 88px;
+        border-radius: 22px;
+        animation: boot-breathe 1.6s ease-in-out infinite;
+      }
+      @keyframes boot-breathe {
+        0%,
+        100% {
+          transform: scale(0.96);
+          opacity: 0.85;
+        }
+        50% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash img {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div class="boot-splash" role="status" aria-label="Loading Domovoy">
+        <img src="/web-app-manifest-192x192.png" alt="" />
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

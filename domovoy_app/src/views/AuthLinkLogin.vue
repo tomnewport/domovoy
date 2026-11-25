@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useSessionStore } from '@/stores/session'
-import { routerKey, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import API from '@/services/domovoy'
 import { onMounted } from 'vue'
+import AuthLayout from '@/components/auth/AuthLayout.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,22 +19,20 @@ onMounted(async () => {
     if (!result.response.ok) {
       throw new Error('Link failed')
     }
-    sessionStore.setSessionId(result.data)
-    router.push({ path: '/' })
+    await sessionStore.setSessionId(result.data)
+    router.replace({ path: '/' })
   } catch (err) {
     console.error(err)
-    router.push({ path: '/auth_link/error' })
+    router.replace({ path: '/auth_link/error' })
   }
 })
 </script>
 <template>
-  <v-container>
-    <v-card>
-      <v-card-title>Logging you in...</v-card-title>
-      <v-card-item class="d-flex justify-center"
-        ><v-progress-circular color="primary" indeterminate></v-progress-circular
-      ></v-card-item>
-      <v-card-text>Please wait while your link is checked.</v-card-text>
-    </v-card>
-  </v-container>
+  <AuthLayout compact>
+    <div class="d-flex flex-column align-center text-center pa-8" role="status">
+      <v-progress-circular indeterminate color="primary" size="40" />
+      <h2 class="text-h6 mt-5">Logging you in…</h2>
+      <p class="text-body-2 text-medium-emphasis mt-1">Checking your link.</p>
+    </div>
+  </AuthLayout>
 </template>
