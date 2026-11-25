@@ -55,3 +55,16 @@ export async function fetchAllCompletions(
   }
   return all
 }
+
+export type HomeUpkeep = components['schemas']['HomeUpkeep']
+
+// Ideal points per week for one home, and points actually earned per day
+// (without overdue bonuses) over the last `days` days.
+export async function fetchUpkeep(homeId: number, days = 56): Promise<HomeUpkeep> {
+  const { data } = await client.GET('/api/regular_jobs/v1/upkeep', {
+    headers: getHeaders(),
+    params: { query: { home_id: homeId, days } }
+  })
+  if (!data) throw new Error('Could not load upkeep')
+  return data
+}

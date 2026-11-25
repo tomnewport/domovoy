@@ -80,7 +80,8 @@ Grouped by domain:
   `RuleCalendarEditor`), `CompleteJobCard` / `QuickCompleteJob`,
   `CongratulateCard`, `JobAssignerResult`, `InstanceViewer`,
   `RegularJobDefinitionList`.
-- **`profile/`** — `ProgressTiles`, `HomeStandings`, `ActivityFeed`, and the
+- **`profile/`** — `ProgressTiles`, `HomeStandings` (with `HomeUpkeep`: points
+  done against the home's ideal, per period and per week), `ActivityFeed`, and the
   holiday planner (`HolidayPlanner`, `HolidayCalendar`, `HolidayForm`, with the
   data logic in `holidays.ts`). `progress.ts` holds the period maths (points,
   jobs, on-time rate, streak, standings).
