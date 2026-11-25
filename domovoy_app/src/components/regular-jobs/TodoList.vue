@@ -115,6 +115,29 @@ const open = ref<boolean>(false)
         v-model="searchTerm"
       ></v-text-field>
     </v-list-item>
+    <template v-if="!jobStore.hasData">
+      <!-- First visit, nothing cached yet: hold the list's shape while it loads. -->
+      <v-skeleton-loader
+        v-for="n in 6"
+        :key="`skeleton-${n}`"
+        type="list-item-avatar-two-line"
+        color="background"
+        aria-hidden="true"
+      />
+    </template>
+    <div
+      v-else-if="jobStore.fresh && matchedJobs.ungrouped.length === 0"
+      class="d-flex flex-column align-center text-center pa-8 text-medium-emphasis"
+    >
+      <v-icon size="48" class="mb-3">{{ searchTerm ? 'mdi-magnify-close' : 'mdi-broom' }}</v-icon>
+      <template v-if="searchTerm">
+        <div class="text-subtitle-1">No tasks match “{{ searchTerm }}”</div>
+      </template>
+      <template v-else>
+        <div class="text-subtitle-1">Nothing on the list</div>
+        <div class="text-body-2">Jobs from your homes appear here once they're scheduled.</div>
+      </template>
+    </div>
     <template v-if="useGroups">
       <template
         v-for="section in sections.filter(

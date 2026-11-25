@@ -28,6 +28,7 @@ watch(jobDefinitionId, () => {
         v-bind="activatorProps"
         class="me-4 mb-14"
         icon="mdi-check"
+        aria-label="Complete a job"
         color="primary"
         location="bottom end"
         fixed
@@ -44,6 +45,8 @@ watch(jobDefinitionId, () => {
           item-title="name"
           item-value="id"
           label="Select"
+          :loading="!regularJobStore.fresh && regularJobStore.loading"
+          :no-data-text="regularJobStore.hasData ? 'No matching jobs' : 'Loading jobs…'"
           closable-chips
           autofocus
           disable-gutters

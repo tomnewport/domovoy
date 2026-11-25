@@ -6,7 +6,8 @@ export async function makeHeader(
   s: string,
   n: number,
   nonce: string,
-  charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+  isCancelled: () => boolean = () => false
 ): Promise<string> {
   const now =
     new Date().toISOString().slice(2, 10).replace(/-/g, '') +
@@ -15,6 +16,7 @@ export async function makeHeader(
   const encoder = new TextEncoder()
   const baseEncoded = encoder.encode(base)
   for await (const token of allStrings(charset)) {
+    if (isCancelled()) return ''
     const value = new Uint8Array([...baseEncoded, ...encoder.encode(token)])
     if (trailingZeros(await hash(value)) >= n) {
       return base + token
@@ -23,16 +25,61 @@ export async function makeHeader(
   return ''
 }
 
+// Stamps are tied to their subject (the email address) and a timestamp the
+// server accepts for an hour; reuse one for half that.
+const STAMP_MAX_AGE_MS = 30 * 60 * 1000
+
+interface StampJob {
+  subject: string
+  startedAt: number
+  promise: Promise<string>
+  cancel: () => void
+}
+
+// Solving a stamp takes a few seconds on a phone. `prepare` starts on it in the
+// background as soon as the email is known (e.g. while the rest of the form is
+// filled in), so `stampFor` at submit time is usually instant.
 export function useHashcash() {
   const hashcashStore = useHashcashConfigStore()
-  return async (subject: string) => {
-    const { hashcashConfig } = hashcashStore
-    if (!hashcashConfig) {
-      throw new Error('Hashcash config not loaded')
+  let current: StampJob | null = null
+
+  const isCurrent = (subject: string) =>
+    current?.subject === subject && Date.now() - current.startedAt < STAMP_MAX_AGE_MS
+
+  function start(subject: string): StampJob | null {
+    const config = hashcashStore.hashcashConfig
+    if (!config) return null
+    current?.cancel()
+    let cancelled = false
+    current = {
+      subject,
+      startedAt: Date.now(),
+      promise: makeHeader(subject, config.difficulty, config.nonces[0], undefined, () => cancelled),
+      cancel: () => {
+        cancelled = true
+      }
     }
-    const value = await makeHeader(subject, hashcashConfig.difficulty, hashcashConfig.nonces[0])
-    return value
+    return current
   }
+
+  function prepare(subject: string) {
+    if (!isCurrent(subject)) start(subject)
+  }
+
+  async function stampFor(subject: string): Promise<string> {
+    if (isCurrent(subject) && current) return current.promise
+    if (!hashcashStore.hashcashConfig) await hashcashStore.load()
+    const job = start(subject)
+    if (!job) throw new Error('Could not reach the server. Please try again.')
+    return job.promise
+  }
+
+  function cancel() {
+    current?.cancel()
+    current = null
+  }
+
+  return { prepare, stampFor, cancel }
 }
 
 function trailingZeros(n: bigint) {

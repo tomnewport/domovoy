@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { components } from '@/services/domovoy/schema.d.ts'
 import { useHomesStore } from '@/stores/homes'
-import { onMounted } from 'vue'
-import { ref } from 'vue'
-import { watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { client, getHeaders } from '@/services/domovoy'
 import CreateRegularJob from '@/components/regular-jobs/CreateRegularJob.vue'
@@ -12,10 +10,13 @@ import JobEditor from '@/components/regular-jobs/JobEditor.vue'
 
 const homesStore = useHomesStore()
 const route = useRoute()
-const home = ref<undefined | components['schemas']['HomeSchema']>(undefined)
+const home = computed(() =>
+  homesStore.homes?.find((home) => home.id?.toString() === route.params.homeId)
+)
 const definitions = ref<components['schemas']['RegularJobDefinitionSchema'][]>([])
 const matchedDefinitions = ref<components['schemas']['RegularJobDefinitionSchema'][]>([])
 const searchTerm = ref<string>('')
+const loadingJobs = ref<boolean>(true)
 
 const SORT_LOW_HIGH = 'Lowest value'
 const SORT_HIGH_LOW = 'Highest value'
@@ -27,8 +28,7 @@ const sortOptions = [SORT_LOW_HIGH, SORT_HIGH_LOW, SORT_NAME_AZ, SORT_NAME_ZA]
 const sortType = ref<(typeof sortOptions)[number]>(SORT_NAME_AZ)
 
 async function reload() {
-  await homesStore.ensureLoaded()
-  home.value = homesStore.homes?.find((home) => home.id?.toString() === route.params.homeId)
+  homesStore.ensureLoaded()
   const defResult = await client.GET('/api/regular_jobs/v1/definitions', {
     headers: getHeaders(),
     params: {
@@ -40,6 +40,7 @@ async function reload() {
     }
   })
   if (defResult.data) definitions.value = defResult.data
+  loadingJobs.value = false
   applySortSearch()
 }
 
@@ -71,20 +72,35 @@ onMounted(async () => {
 watch([searchTerm, sortType], applySortSearch)
 </script>
 <template>
-  <template v-if="home">
-    <v-toolbar color="secondary" app fixed class="fixed-bar">
-      <v-btn icon :to="`/homes/${route.params.homeId}`">
-        <v-icon>mdi-arrow-left</v-icon>
-      </v-btn>
-      <v-toolbar-title>{{ home.name }} - Jobs</v-toolbar-title>
-      <v-spacer></v-spacer>
-      <CreateRegularJob :homeId="route.params.homeId" :onChange="reload" />
-    </v-toolbar>
-    <v-container>
-      <v-text-field label="Search" v-model="searchTerm"></v-text-field>
-      <v-select label="Sort" :items="sortOptions" v-model="sortType"></v-select>
-      <JobEditor :back-link="`/homes/${home.id}/jobs`" />
-      <RegularJobDefinitionList :jobs="matchedDefinitions" :onChange="reload" />
-    </v-container>
-  </template>
+  <v-toolbar color="secondary" app fixed class="fixed-bar">
+    <v-btn icon :to="`/homes/${route.params.homeId}`" aria-label="Back to home">
+      <v-icon>mdi-arrow-left</v-icon>
+    </v-btn>
+    <v-toolbar-title v-if="home">{{ home.name }} - Jobs</v-toolbar-title>
+    <v-toolbar-title v-else-if="homesStore.initialized">Home not found</v-toolbar-title>
+    <v-toolbar-title v-else><span class="dmv-placeholder"></span></v-toolbar-title>
+    <v-spacer></v-spacer>
+    <CreateRegularJob v-if="home" :homeId="route.params.homeId" :onChange="reload" />
+  </v-toolbar>
+  <v-container v-if="home || !homesStore.initialized">
+    <v-text-field label="Search" v-model="searchTerm"></v-text-field>
+    <v-select label="Sort" :items="sortOptions" v-model="sortType"></v-select>
+    <JobEditor v-if="home" :back-link="`/homes/${home.id}/jobs`" />
+    <template v-if="loadingJobs">
+      <v-skeleton-loader
+        v-for="n in 5"
+        :key="n"
+        type="list-item"
+        color="background"
+        aria-hidden="true"
+      />
+    </template>
+    <div
+      v-else-if="matchedDefinitions.length === 0"
+      class="text-center pa-6 text-medium-emphasis text-body-2"
+    >
+      {{ searchTerm ? 'No jobs match your search.' : 'No jobs yet. Add one with the + button.' }}
+    </div>
+    <RegularJobDefinitionList v-else :jobs="matchedDefinitions" :onChange="reload" />
+  </v-container>
 </template>
