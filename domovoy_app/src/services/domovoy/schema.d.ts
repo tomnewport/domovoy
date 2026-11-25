@@ -300,8 +300,9 @@ export interface paths {
          *     `ideal_per_week`: the points a week of every job done on schedule would
          *     earn (each job's occurrences per week, from its rules over a year, times
          *     its default value). `daily_points`: points actually earned each day of
-         *     the last `days`, without overdue bonuses. `jobs`: each job's share of the
-         *     ideal.
+         *     the last `days`, without overdue bonuses. `daily_jobs`, `daily_on_time`
+         *     and `daily_late`: jobs completed each day, and how many of those met or
+         *     missed a due date. `jobs`: each job's share of the ideal.
          */
         get: operations["domovoy_apps_regular_job_api_v1_api_home_upkeep"];
         put?: never;
@@ -795,6 +796,12 @@ export interface components {
             dates: string[];
             /** Daily Points */
             daily_points: number[];
+            /** Daily Jobs */
+            daily_jobs: number[];
+            /** Daily On Time */
+            daily_on_time: number[];
+            /** Daily Late */
+            daily_late: number[];
             /** Jobs */
             jobs: components["schemas"]["UpkeepJob"][];
         };
