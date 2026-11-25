@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import type { SubmitEventPromise } from 'vuetify'
 import { client, getHeaders } from '@/services/domovoy'
+import { apiErrorMessage } from '@/services/domovoy/errors'
 import { useHomesStore } from '@/stores/homes'
 
 const homesStore = useHomesStore()
@@ -8,19 +10,31 @@ const homesStore = useHomesStore()
 const name = ref<string>('')
 const description = ref<string>('')
 const dialog = ref<boolean>(false)
+const saving = ref(false)
+const error = ref<string | null>(null)
+const required = (v: string) => !!v.trim() || 'Give the home a name'
 
-async function create() {
+async function create(event: SubmitEventPromise) {
+  if (saving.value || !(await event).valid) return
+  saving.value = true
+  error.value = null
   try {
-    const { error } = await client.POST('/api/homes/v1/homes', {
-      body: { name: name.value, description: description.value },
+    const result = await client.POST('/api/homes/v1/homes', {
+      body: { name: name.value.trim(), description: description.value },
       headers: getHeaders()
     })
-    if (!error) {
-      homesStore.reloadHomes()
-      dialog.value = false
+    if (!result.response.ok) {
+      error.value = apiErrorMessage(result.error, 'Could not create the home.')
+      return
     }
-  } catch (error) {
-    console.error('Failed to create home:', error)
+    await homesStore.reloadHomes()
+    name.value = ''
+    description.value = ''
+    dialog.value = false
+  } catch {
+    error.value = 'Could not reach the server. Check your connection and try again.'
+  } finally {
+    saving.value = false
   }
 }
 </script>
@@ -41,10 +55,17 @@ async function create() {
         </v-toolbar>
         <v-card-item>
           <v-form @submit.prevent="create">
-            <v-text-field v-model="name" label="Name" variant="underlined" />
+            <v-text-field
+              v-model="name"
+              label="Name"
+              variant="underlined"
+              :rules="[required]"
+              validate-on="submit"
+            />
             <v-textarea v-model="description" label="Description" variant="underlined" />
+            <v-alert v-if="error" type="error" variant="tonal" density="compact" :text="error" />
             <v-col class="d-flex justify-end">
-              <v-btn type="submit" variant="text">Create</v-btn>
+              <v-btn type="submit" variant="text" :loading="saving">Create</v-btn>
             </v-col>
           </v-form>
         </v-card-item>

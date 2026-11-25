@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import { useSlotTextContent } from './utils'
+import { format } from 'date-fns'
 import { formatNaturalDate } from '@/utils/dates'
 
 const content = useSlotTextContent()
@@ -21,7 +22,8 @@ const display = computed(() => {
   if (!content.value) return ''
   const value = new Date(content.value)
   if (variant === 'natural') return formatNaturalDate(value, now.value)
-  return value.toLocaleDateString()
+  // Spelled out, so it reads the same whatever the phone's locale.
+  return format(value, 'd MMMM yyyy')
 })
 </script>
 <template>{{ display }}</template>

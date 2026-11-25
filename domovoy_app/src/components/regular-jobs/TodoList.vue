@@ -24,7 +24,9 @@ const sections = [
   { classification: JobClassification.ASSIGNED, title: 'Assigned to me' },
   { classification: JobClassification.IN_HOME, title: 'Ready to do' },
   { classification: JobClassification.FUTURE, title: 'Coming up' },
-  { classification: JobClassification.UNSCHEDULED, title: '???' }
+  // No date and nobody assigned: no rules yet, or nobody free to take it.
+  // Listed so it can still be found and done.
+  { classification: JobClassification.UNSCHEDULED, title: 'Not scheduled' }
 ]
 
 const matchedJobs = computed(() => {
@@ -40,7 +42,6 @@ const matchedJobs = computed(() => {
   return {
     grouped,
     ungrouped: jobStore.definitions
-      .filter((job) => job.next_assigned_to !== null)
       .filter(
         (job) =>
           searchTerm.value === null ||
@@ -48,9 +49,13 @@ const matchedJobs = computed(() => {
           job.description?.toLowerCase().includes(searchTerm.value.toLowerCase())
       )
       .sort((job1, job2) => {
-        if (sortType.value === 'assigned')
-          return (job1.next_assigned_date || 0) > (job2.next_assigned_date || 0) ? -1 : 1
-        return (job1.next_assigned_due_date || 0) > (job2.next_assigned_due_date || 0) ? 1 : -1
+        // Jobs with no date go last whichever date the list is sorted by.
+        const key = sortType.value === 'assigned' ? 'next_assigned_date' : 'next_assigned_due_date'
+        const a = job1[key]
+        const b = job2[key]
+        if (!a || !b) return a ? -1 : b ? 1 : job1.name.localeCompare(job2.name)
+        if (sortType.value === 'assigned') return a > b ? -1 : 1
+        return a > b ? 1 : -1
       })
       .map((job) => {
         const classification = getJobClassification(job, you.value)
@@ -104,7 +109,8 @@ const open = ref<boolean>(false)
       "
     />
   </v-dialog>
-  <v-list lines="two" class="pa-0">
+  <!-- Bottom room so the last task can scroll clear of the ✓ button. -->
+  <v-list lines="two" class="pa-0 todo-list">
     <v-list-item>
       <v-text-field
         clearable
@@ -177,3 +183,8 @@ const open = ref<boolean>(false)
     </template>
   </v-list>
 </template>
+<style scoped>
+.todo-list {
+  padding-bottom: 88px !important;
+}
+</style>

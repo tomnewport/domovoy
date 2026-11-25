@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
+import { toast } from 'vue-sonner'
 import InstanceViewer from './InstanceViewer.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRegularJobStore, type EditJobDefinition, type Ruleset } from '@/stores/regular-job'
@@ -43,15 +44,31 @@ watch(job, () => {
 
 watch(criticality, async () => {
   const jobCriticality = criticality.value
-  if (typeof jobCriticality === 'string') {
-    if (job.value && jobCriticality !== job.value.criticality) savingCriticality.value = true
+  // Only a change someone made: not the value arriving as the job loads.
+  if (typeof jobCriticality !== 'string' || !job.value || jobCriticality === job.value.criticality)
+    return
+  savingCriticality.value = true
+  try {
     await update({ criticality: jobCriticality as 'L' | 'M' | 'H' })
+  } catch (err) {
+    criticality.value = job.value?.criticality
+    toast.error(`Criticality not saved: ${err instanceof Error ? err.message : 'try again'}`)
+  } finally {
     savingCriticality.value = false
   }
 })
 
 async function update(changeObj: Partial<EditJobDefinition>) {
-  job.value?.id && (await regularJobStore.editDefinition(job.value.id, changeObj))
+  if (job.value?.id) await regularJobStore.editDefinition(job.value.id, changeObj)
+}
+
+// The rule editors don't handle failures themselves: report them here.
+async function saveRules(rules: Ruleset) {
+  try {
+    await update({ rules })
+  } catch (err) {
+    toast.error(`Schedule not saved: ${err instanceof Error ? err.message : 'try again'}`)
+  }
 }
 </script>
 <template>
@@ -138,11 +155,7 @@ async function update(changeObj: Partial<EditJobDefinition>) {
             <v-expansion-panel>
               <v-expansion-panel-title>Rules</v-expansion-panel-title>
               <v-expansion-panel-text class="pa-0">
-                <RulesEditor
-                  v-if="job"
-                  :value="job.rules"
-                  :onChange="async (rules: Ruleset) => await update({ rules })"
-                ></RulesEditor>
+                <RulesEditor v-if="job" :value="job.rules" :onChange="saveRules"></RulesEditor>
               </v-expansion-panel-text>
             </v-expansion-panel>
             <v-expansion-panel v-if="job?.id">

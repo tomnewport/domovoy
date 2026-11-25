@@ -26,7 +26,7 @@ const syncing = computed(() => !regularJobStore.fresh && regularJobStore.loading
 onMounted(() => {
   // Most people read the card before choosing; fetch the snooze dates now so
   // the menu opens with them ready.
-  regularJobStore.prefetchSnoozeOptions(jobDefinition)
+  if (jobDefinition.next_assigned_due_date) regularJobStore.prefetchSnoozeOptions(jobDefinition)
 })
 
 const snoozeState = computed(() => regularJobStore.snoozeOptionsFor(jobDefinition))
@@ -73,6 +73,7 @@ async function snooze(date: string) {
 const me = useCurrentUser()
 
 const mine = computed(() => me.value?.id === jobDefinition.next_assigned_to)
+const scheduled = computed(() => !!jobDefinition.next_assigned_due_date)
 </script>
 
 <template>
@@ -90,17 +91,23 @@ const mine = computed(() => me.value?.id === jobDefinition.next_assigned_to)
       ></v-card-title
     >
     <v-card-subtitle class="d-flex">
-      <span
-        ><d-user-display>{{ jobDefinition.next_assigned_to }}</d-user-display></span
-      >
-      <v-spacer></v-spacer>
-      <span
-        ><d-date-display>{{ jobDefinition.next_assigned_due_date }}</d-date-display></span
-      >
+      <template v-if="scheduled">
+        <span
+          ><d-user-display>{{ jobDefinition.next_assigned_to }}</d-user-display></span
+        >
+        <v-spacer></v-spacer>
+        <span
+          >Due
+          <d-date-display variant="natural">{{
+            jobDefinition.next_assigned_due_date
+          }}</d-date-display></span
+        >
+      </template>
+      <span v-else>Not scheduled: anyone can do it any time</span>
     </v-card-subtitle>
 
     <v-list>
-      <v-list-item>
+      <v-list-item v-if="jobDefinition.description">
         {{ jobDefinition.description }}
       </v-list-item>
       <v-list-item v-if="jobDefinition.value_min === jobDefinition.value_max"
@@ -127,7 +134,8 @@ const mine = computed(() => me.value?.id === jobDefinition.next_assigned_to)
     <v-card-actions>
       <v-btn v-on:click="onClose" :disabled="busy !== null">Cancel</v-btn>
       <v-spacer></v-spacer>
-      <v-menu location="top end">
+      <!-- Snoozing moves a due date; a job without one has nothing to move. -->
+      <v-menu v-if="scheduled" location="top end">
         <template v-slot:activator="{ props }">
           <v-btn
             v-bind="props"

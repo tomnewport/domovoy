@@ -5,6 +5,7 @@ import { useLoadingState } from './manager'
 import { client, getHeaders } from '@/services/domovoy'
 import { useSessionStore } from './session'
 import { readCache, writeCache } from '@/utils/cache'
+import { apiErrorMessage } from '@/services/domovoy/errors'
 
 export type RegularJobDefinition = components['schemas']['RegularJobDefinitionSchema']
 export type HomeStatistics = components['schemas']['HomeStatistics']
@@ -66,10 +67,10 @@ export const useRegularJobStore = defineStore('regular-job', () => {
       },
       body: changes as EditJobDefinition
     })
-    if (result.data) {
-      const unchanged = definitions.value.filter((def) => def.id !== definitionId)
-      definitions.value = [...unchanged, result.data]
-    }
+    // Refused (or not answered): say so, rather than leave the screen
+    // showing a change the server doesn't have.
+    if (!result.data) throw new Error(apiErrorMessage(result.error, 'Could not save the change'))
+    replaceDefinition(result.data)
   }
 
   // One request per scope at a time: the app shell, the task list and the job

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useHomesStore } from '@/stores/homes'
+import type { SubmitEventPromise } from 'vuetify'
 import { client, getHeaders } from '@/services/domovoy'
+import { apiErrorMessage } from '@/services/domovoy/errors'
 
 const homesStore = useHomesStore()
 
@@ -26,31 +28,49 @@ watch(value_default, (newValue) => {
   }
 })
 
-async function send() {
-  await client.POST('/api/regular_jobs/v1/definitions', {
-    headers: getHeaders(),
-    params: {
-      query: {
-        home_id: parseInt(
-          (typeof props.homeId == 'string' ? props.homeId : (props.homeId || [])[0]) || home.value
-        )
+const saving = ref(false)
+const error = ref<string | null>(null)
+
+async function send(event: SubmitEventPromise) {
+  // Only send a valid form, and only once.
+  if (saving.value || !(await event).valid) return
+  saving.value = true
+  error.value = null
+  try {
+    const result = await client.POST('/api/regular_jobs/v1/definitions', {
+      headers: getHeaders(),
+      params: {
+        query: {
+          home_id: parseInt(
+            (typeof props.homeId == 'string' ? props.homeId : (props.homeId || [])[0]) || home.value
+          )
+        }
+      },
+      body: {
+        name: name.value,
+        description: description.value,
+        value_default: parseInt(value_default.value),
+        value_min: parseInt(customValue.value ? value_min.value : value_default.value),
+        value_max: parseInt(customValue.value ? value_max.value : value_default.value)
       }
-    },
-    body: {
-      name: name.value,
-      description: description.value,
-      value_default: parseInt(value_default.value),
-      value_min: parseInt(customValue.value ? value_min.value : value_default.value),
-      value_max: parseInt(customValue.value ? value_max.value : value_default.value)
+    })
+    if (!result.response.ok) {
+      // Keep what was entered, so it can be fixed and sent again.
+      error.value = apiErrorMessage(result.error, 'Could not create the job.')
+      return
     }
-  })
-  name.value = ''
-  description.value = ''
-  value_default.value = ''
-  value_min.value = ''
-  value_max.value = ''
-  await props.onChange()
-  open.value = false
+    name.value = ''
+    description.value = ''
+    value_default.value = ''
+    value_min.value = ''
+    value_max.value = ''
+    await props.onChange()
+    open.value = false
+  } catch {
+    error.value = 'Could not reach the server. Check your connection and try again.'
+  } finally {
+    saving.value = false
+  }
 }
 
 const rules = {
@@ -119,6 +139,15 @@ const rules = {
                 label="Minimum value"
               ></v-text-field>
             </v-card-text>
+            <!-- Outside the scrolling area, so it's seen whatever the scroll position. -->
+            <v-alert
+              v-if="error"
+              type="error"
+              variant="tonal"
+              density="compact"
+              class="mx-4 mb-2"
+              :text="error"
+            />
 
             <v-divider></v-divider>
 
@@ -127,7 +156,13 @@ const rules = {
 
               <v-spacer></v-spacer>
 
-              <v-btn color="surface-variant" text="Save" variant="flat" type="submit"></v-btn>
+              <v-btn
+                color="surface-variant"
+                text="Save"
+                variant="flat"
+                type="submit"
+                :loading="saving"
+              ></v-btn>
             </v-card-actions>
           </v-card>
         </v-form>
