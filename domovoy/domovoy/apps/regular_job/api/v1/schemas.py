@@ -46,7 +46,6 @@ class RegularJobDefinitionSchema(ModelSchema):
             "description",
             "open_for_days",
             "criticality",
-            "rules",
             "value_min",
             "value_max",
             "value_default",

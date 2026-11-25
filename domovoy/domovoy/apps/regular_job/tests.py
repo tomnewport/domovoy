@@ -537,3 +537,35 @@ class JobApiPermissionTests(TestCase):
 
     def test_requires_a_session(self):
         self.assertEqual(Client().get("/api/regular_jobs/v1/definitions").status_code, 401)
+
+
+class BeforeMidnightTests(SimpleTestCase):
+    """Deadlines are 23:59 London time, stored as UTC."""
+
+    def utc(self, *args):
+        return datetime(*args, tzinfo=dt_timezone.utc)
+
+    def test_winter_and_summer(self):
+        self.assertEqual(before_midnight(date(2030, 1, 7)), self.utc(2030, 1, 7, 23, 59))
+        self.assertEqual(before_midnight(date(2030, 7, 1)), self.utc(2030, 7, 1, 22, 59))
+
+    def test_days_the_clocks_change(self):
+        # BST starts at 01:00 UTC on 31 March 2030 and ends on 27 October.
+        self.assertEqual(before_midnight(date(2030, 3, 31)), self.utc(2030, 3, 31, 22, 59))
+        self.assertEqual(before_midnight(date(2030, 10, 27)), self.utc(2030, 10, 27, 23, 59))
+
+    def test_aware_datetimes_use_their_london_day(self):
+        # 23:30 UTC on 1 July is 00:30 on 2 July in London.
+        self.assertEqual(
+            before_midnight(self.utc(2030, 7, 1, 23, 30)), self.utc(2030, 7, 2, 22, 59)
+        )
+
+    def test_naive_datetimes_are_local(self):
+        self.assertEqual(
+            before_midnight(datetime(2030, 7, 1, 8, 0)), self.utc(2030, 7, 1, 22, 59)
+        )
+
+    def test_other_timezones(self):
+        self.assertEqual(
+            before_midnight(date(2030, 1, 7), "America/New_York"), self.utc(2030, 1, 8, 4, 59)
+        )

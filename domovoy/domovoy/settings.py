@@ -103,12 +103,18 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = settings.domovoy_smtp_server
-EMAIL_PORT = settings.domovoy_smtp_port
-EMAIL_HOST_USER = settings.domovoy_smtp_username
-EMAIL_HOST_PASSWORD = settings.domovoy_smtp_password
-EMAIL_USE_TLS = True
+MAILERS = {
+    "default": {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": settings.domovoy_smtp_server,
+            "port": settings.domovoy_smtp_port,
+            "username": settings.domovoy_smtp_username,
+            "password": settings.domovoy_smtp_password,
+            "use_tls": True,
+        },
+    }
+}
 
 ROOT_URLCONF = "domovoy.urls"
 

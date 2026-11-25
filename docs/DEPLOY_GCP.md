@@ -207,7 +207,7 @@ job is skipped, so merging this PR before bootstrap leaves CI green.
 3. Either refresh dev from prod (see "Refreshing dev with a copy of prod
    data"), or create an admin user with the **direct** URL. Run this from
    `domovoy/`, with the other required `domovoy_*` variables set to anything:
-   `domovoy_database_url='<dev direct url>' poetry run python manage.py createsuperuser`.
+   `domovoy_database_url='<dev direct url>' uv run python manage.py createsuperuser`.
 4. Repeat for `main` → prod. Smoke-test prod with the `curl` checks below.
 
 ## Verifying after a deploy

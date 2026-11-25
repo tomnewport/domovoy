@@ -50,7 +50,7 @@ class HolidaySchema(ModelSchema):
 
     class Meta:
         model = Holiday
-        fields = ["id", "note", "membership", "from_date", "to_date"]
+        fields = ["id", "note", "from_date", "to_date"]  # membership: declared above
 
 
 class UpdateHolidaySchema(Schema):

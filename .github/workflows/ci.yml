@@ -28,35 +28,31 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Poetry
-        run: pipx install poetry==2.4.3
-
-      - name: Setup Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      # uv installs the Python in .python-version and the locked dependencies.
+      - name: Install uv
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          python-version: "3.12"
-          cache: poetry
+          version: "0.13.10"
+          enable-cache: true
 
       - name: Install backend dependencies
-        run: |
-          poetry env use "$(which python)"
-          poetry install --no-interaction
+        run: uv sync --locked
 
       - name: Ruff
-        run: poetry run ruff check .
+        run: uv run ruff check .
 
-      # manage.py lives in domovoy/, but the Poetry project is the repo root.
+      # manage.py lives in domovoy/; uv finds the project in the repo root.
       - name: Django system checks
         working-directory: domovoy
-        run: poetry -P .. run python manage.py check
+        run: uv run python manage.py check
 
       - name: Check for missing migrations
         working-directory: domovoy
-        run: poetry -P .. run python manage.py makemigrations --check --dry-run
+        run: uv run python manage.py makemigrations --check --dry-run
 
       - name: Django tests
         working-directory: domovoy
-        run: poetry -P .. run python manage.py test
+        run: uv run python manage.py test
 
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -92,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18  # Neon production runs 18
         env:
           POSTGRES_USER: domovoy
           POSTGRES_PASSWORD: ci-not-a-secret
@@ -117,23 +113,19 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Poetry
-        run: pipx install poetry==2.4.3
-
-      - name: Setup Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      # uv installs the Python in .python-version and the locked dependencies.
+      - name: Install uv
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          python-version: "3.12"
-          cache: poetry
+          version: "0.13.10"
+          enable-cache: true
 
       - name: Install backend dependencies
-        run: |
-          poetry env use "$(which python)"
-          poetry install --no-interaction
+        run: uv sync --locked
 
       - name: Django tests
         working-directory: domovoy
-        run: poetry -P .. run python manage.py test --noinput
+        run: uv run python manage.py test --noinput
 
   # Deployment (docs/DEPLOY_GCP.md): Cloud Run + Firebase Hosting.
   # main -> prod, dev -> dev. Configuration is in repository-level Actions
@@ -157,7 +149,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      FIREBASE_TOOLS_VERSION: 15.35.0
+      FIREBASE_TOOLS_VERSION: 15.37.0
       DEPLOY_ENV: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
 
     steps:
