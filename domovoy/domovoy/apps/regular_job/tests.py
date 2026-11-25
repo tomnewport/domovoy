@@ -786,7 +786,12 @@ class UpkeepTests(TestCase):
         job(cls.other, "Not yours", [RuleDelay(days=1)], 50)
         now = timezone.now()
         RegularJobInstance.objects.create(
-            job=cls.weekly, value=8, bonus=3, completed_by=cls.alice, completed_at=now
+            job=cls.weekly, value=8, bonus=3, completed_by=cls.alice, completed_at=now,
+            due_at=now - timedelta(days=2),
+        )
+        RegularJobInstance.objects.create(
+            job=cls.daily, value=2, completed_by=cls.alice, completed_at=now - timedelta(days=1),
+            due_at=now,
         )
         RegularJobInstance.objects.create(
             job=cls.daily, value=2, completed_by=cls.alice, completed_at=now - timedelta(days=1)
@@ -802,7 +807,12 @@ class UpkeepTests(TestCase):
         self.assertEqual([j["name"] for j in upkeep["jobs"]], ["Feed the cat", "Bins"])
         self.assertEqual(len(upkeep["daily_points"]), 7)
         # Today's 8 points included a bonus of 3: only 5 count.
-        self.assertEqual(upkeep["daily_points"][-2:], [2, 5])
+        self.assertEqual(upkeep["daily_points"][-2:], [4, 5])
+        # Yesterday: one on time, one with no due date. Today: one late.
+        self.assertEqual(upkeep["daily_jobs"][-2:], [2, 1])
+        self.assertEqual(upkeep["daily_on_time"][-2:], [1, 0])
+        self.assertEqual(upkeep["daily_late"][-2:], [0, 1])
+        self.assertEqual(upkeep["daily_jobs"][:-2], [0] * 5)
 
     def test_only_your_homes(self):
         response = ApiClient(self.alice).get(f"/api/regular_jobs/v1/upkeep?home_id={self.other.id}")

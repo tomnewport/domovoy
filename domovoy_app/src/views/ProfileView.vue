@@ -5,25 +5,19 @@ import { startOfDay, subDays } from 'date-fns'
 import AuthWall from '@/components/auth/AuthWall.vue'
 import Logout from '@/components/auth/Logout.vue'
 import ProgressTiles from '@/components/profile/ProgressTiles.vue'
-import HomeStandings from '@/components/profile/HomeStandings.vue'
-import ActivityFeed from '@/components/profile/ActivityFeed.vue'
+import HomeContributions from '@/components/profile/HomeContributions.vue'
+import TopJobs from '@/components/profile/TopJobs.vue'
+import ActivityFeed from '@/components/activity/ActivityFeed.vue'
 import HolidayPlanner from '@/components/profile/HolidayPlanner.vue'
 import { useSessionStore } from '@/stores/session'
 import { useHomesStore } from '@/stores/homes'
 import {
   fetchAllCompletions,
   fetchStatistics,
-  fetchUpkeep,
   type HomeStatistics,
-  type HomeUpkeep,
   type JobCompletion
 } from '@/services/domovoy/stats'
-import {
-  completionsByPeriod,
-  currentStreak,
-  pointsByPeriod,
-  type Period
-} from '@/components/profile/progress'
+import { completionsByPeriod, currentStreak, pointsByPeriod, type Period } from '@/utils/progress'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,10 +32,10 @@ watch(tab, (value) => router.replace({ query: { ...route.query, tab: value } }))
 const period = ref<Period>(7)
 const me = computed(() => sessionStore.session?.id ?? null)
 
-// Overview data: each home's statistics and your own completions, both over
-// two periods so this one can be compared with the one before.
-const stats = ref<HomeStatistics[] | null>(null)
-const upkeep = ref<HomeUpkeep[] | null>(null)
+// Your own numbers: each home's statistics (for your points and share) and
+// your completions, both over two periods so this one can be compared with
+// the one before. How each home is doing is on the home's page.
+const stats = ref<{ homeId: number; stats: HomeStatistics }[] | null>(null)
 const mine = ref<JobCompletion[] | null>(null)
 const loadError = ref<string | null>(null)
 
@@ -49,20 +43,21 @@ async function loadOverview() {
   if (!me.value) return
   loadError.value = null
   stats.value = null
-  upkeep.value = null
   mine.value = null
   try {
     await homesStore.ensureLoaded()
     const homes = homesStore.homes ?? []
     const since = subDays(startOfDay(new Date()), period.value * 2 - 1)
-    const [homeStats, homeUpkeep, completions] = await Promise.all([
-      Promise.all(homes.map((home) => fetchStatistics(home.id as number, period.value * 2))),
-      // Eight weeks: the weekly columns, and enough for a 30-day period.
-      Promise.all(homes.map((home) => fetchUpkeep(home.id as number, 56))),
+    const [homeStats, completions] = await Promise.all([
+      Promise.all(
+        homes.map(async (home) => ({
+          homeId: home.id as number,
+          stats: await fetchStatistics(home.id as number, period.value * 2)
+        }))
+      ),
       fetchAllCompletions({ userId: me.value, since })
     ])
     stats.value = homeStats
-    upkeep.value = homeUpkeep
     mine.value = completions
   } catch {
     loadError.value = 'Could not load your progress.'
@@ -73,17 +68,26 @@ onMounted(loadOverview)
 watch([period, me], loadOverview)
 
 const points = computed(() =>
-  stats.value && me.value ? pointsByPeriod(stats.value, me.value, period.value) : null
+  stats.value && me.value
+    ? pointsByPeriod(
+        stats.value.map((s) => s.stats),
+        me.value,
+        period.value
+      )
+    : null
 )
 const totals = computed(() => (mine.value ? completionsByPeriod(mine.value, period.value) : null))
 const streak = computed(() => (mine.value ? currentStreak(mine.value) : 0))
-const homeName = (id: number) => homesStore.homes?.find((h) => h.id === id)?.name ?? ''
-const statsWithHomes = computed(() =>
-  (stats.value ?? []).map((s, i) => ({
-    stats: s,
-    upkeep: upkeep.value?.[i],
-    home: homesStore.homes?.[i]
-  }))
+// Only worth naming a job's home when you're in more than one.
+const homeLabel = (id: number) =>
+  (homesStore.homes?.length ?? 0) > 1
+    ? (homesStore.homes?.find((h) => h.id === id)?.name ?? '')
+    : ''
+const contributions = computed(() =>
+  (stats.value ?? []).flatMap((entry) => {
+    const home = homesStore.homes?.find((h) => h.id === entry.homeId)
+    return home ? [{ home, stats: entry.stats }] : []
+  })
 )
 </script>
 <template>
@@ -136,26 +140,22 @@ const statsWithHomes = computed(() =>
               :streak="streak"
               class="mb-4"
             />
-            <HomeStandings
-              v-for="entry in statsWithHomes"
-              :key="entry.home?.id ?? entry.stats.base_date"
-              :stats="entry.stats"
+            <HomeContributions
+              v-if="contributions.length && me"
+              :entries="contributions"
               :period="period"
-              :upkeep="entry.upkeep"
-              :home-name="entry.home ? homeName(entry.home.id as number) : ''"
+              :user-id="me"
               class="mb-4"
             />
-            <div
-              v-if="!statsWithHomes.length"
-              class="text-center pa-6 text-medium-emphasis text-body-2"
-            >
-              Join or create a home to see how you compare.
+            <div v-else class="text-center pa-6 text-medium-emphasis text-body-2">
+              Join or create a home to see your share of the housework.
             </div>
+            <TopJobs :completions="mine ?? []" :period="period" :home-label="homeLabel" />
           </template>
         </v-window-item>
 
         <v-window-item value="activity">
-          <ActivityFeed v-if="me" :user-id="me" />
+          <ActivityFeed v-if="me" :current-user-id="me" :user-id="me" />
         </v-window-item>
 
         <v-window-item value="holidays">

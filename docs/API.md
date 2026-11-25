@@ -201,15 +201,6 @@ Newest first. Optional query params: `home_id`, `user_id`, `since` (datetime),
 `completed_by_id`, `completed_at`, `due_at`, and `on_time` (completed by the end
 of its due date; `null` if it had none).
 
----
-
-## Admin
-
-The Django admin is mounted at **`/krimba/`** (not `/admin/`). All models
-(`DmvUser`, `Home`, `Membership`, `Holiday`, `RegularJobDefinition`,
-`RegularJobInstance`) are registered. It requires a staff/superuser account
-(`manage.py createsuperuser`).
-
 ### `GET /upkeep` — how well a home is keeping up
 Query params `home_id` and `days` (7–365, default 56). `404` if you aren't a
 member. `200` → `HomeUpkeep`:
@@ -219,7 +210,19 @@ member. `200` → `HomeUpkeep`:
   `value_default`. Jobs without rules count for nothing.
 - `dates` / `daily_points`: points actually earned each day, **without**
   overdue bonuses (`value - bonus`), oldest first.
+- `daily_jobs` / `daily_on_time` / `daily_late`: jobs completed each day, and
+  how many of those met or missed their due date (by the same test as
+  `on_time` in `GET /instances`; jobs with no due date are in neither).
 - `jobs`: each job's `per_week`, `value` and `points_per_week`, largest first.
 
 The ideal uses today's jobs and rules, so older weeks are compared against the
 current schedule.
+
+---
+
+## Admin
+
+The Django admin is mounted at **`/krimba/`** (not `/admin/`). All models
+(`DmvUser`, `Home`, `Membership`, `Holiday`, `RegularJobDefinition`,
+`RegularJobInstance`) are registered. It requires a staff/superuser account
+(`manage.py createsuperuser`).

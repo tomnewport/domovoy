@@ -2,7 +2,9 @@
 import { computed, ref } from 'vue'
 import { format, isToday } from 'date-fns'
 import type { HomeUpkeep } from '@/services/domovoy/stats'
-import type { Period } from './progress'
+import type { Period } from '@/utils/progress'
+import UpkeepMeter from './UpkeepMeter.vue'
+import { upkeepFor, upkeepStatus } from '@/utils/upkeep'
 
 // How well the home is keeping up: points earned (without overdue bonuses)
 // against the ideal, the points a period of every job done on schedule
@@ -16,22 +18,8 @@ const hovered = ref<number | null>(null)
 const sum = (values: number[]) => values.reduce((a, b) => a + b, 0)
 const round = (n: number) => Math.round(n)
 
-const current = computed(() => {
-  const points = sum(upkeep.daily_points.slice(-period))
-  const ideal = (upkeep.ideal_per_week * period) / 7
-  return { points, ideal, ratio: ideal > 0 ? points / ideal : null }
-})
-
-// Status bands: the fill colour carries it, and an icon and label always
-// say it too.
-const status = computed(() => {
-  const r = current.value.ratio
-  if (r === null) return null
-  if (r >= 1) return { label: 'Ahead', icon: 'mdi-check-circle', color: 'success' }
-  if (r >= 0.9) return { label: 'Keeping up', icon: 'mdi-check-circle', color: 'success' }
-  if (r >= 0.7) return { label: 'Slipping', icon: 'mdi-alert', color: 'warning' }
-  return { label: 'Falling behind', icon: 'mdi-alert-octagon', color: 'error' }
-})
+const current = computed(() => upkeepFor(upkeep, period))
+const status = computed(() => upkeepStatus(current.value.ratio))
 
 const periodLabel = computed(() => (period === 7 ? 'this week' : 'in the last 30 days'))
 
@@ -94,20 +82,12 @@ function howOften(perWeek: number) {
           {{ current.points }} of {{ round(current.ideal) }} points
         </span>
       </div>
-      <div
-        class="meter mt-2"
-        :class="`meter--${status?.color}`"
-        role="meter"
-        :aria-valuenow="round(current.ratio * 100)"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        :aria-label="`Upkeep ${periodLabel}`"
-      >
-        <span
-          class="meter__fill"
-          :style="{ width: `${Math.min(100, current.ratio * 100)}%` }"
-        ></span>
-      </div>
+      <UpkeepMeter
+        :ratio="current.ratio"
+        :status="status"
+        :label="`Upkeep ${periodLabel}`"
+        class="mt-2"
+      />
 
       <div class="text-body-2 text-medium-emphasis mt-4 mb-1">Last {{ weeks.length }} weeks</div>
       <div class="weeks">
@@ -237,27 +217,6 @@ function howOften(perWeek: number) {
   </div>
 </template>
 <style scoped>
-.meter {
-  height: 8px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: rgba(var(--meter-color), 0.2);
-}
-.meter__fill {
-  display: block;
-  height: 100%;
-  border-radius: 4px;
-  background: rgb(var(--meter-color));
-}
-.meter--success {
-  --meter-color: var(--v-theme-success);
-}
-.meter--warning {
-  --meter-color: var(--v-theme-warning);
-}
-.meter--error {
-  --meter-color: var(--v-theme-error);
-}
 .weeks {
   position: relative;
   display: inline-block;

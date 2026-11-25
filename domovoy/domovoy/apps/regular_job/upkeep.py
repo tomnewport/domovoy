@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 import pydantic
-from django.db.models import F, Sum
+from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
@@ -63,6 +63,9 @@ class HomeUpkeep(pydantic.BaseModel):
     ideal_per_week: float  # sum of points_per_week over the jobs
     dates: list[datetime]  # one per day, oldest first
     daily_points: list[int]  # points earned each day, without bonuses
+    daily_jobs: list[int]  # jobs completed each day
+    daily_on_time: list[int]  # of those, ones that had a due date and met it
+    daily_late: list[int]  # and ones completed after their due date
     jobs: list[UpkeepJob]  # largest contribution first
 
 
@@ -89,14 +92,26 @@ def get_upkeep(home: Home, days: int) -> HomeUpkeep:
         RegularJobInstance.objects.filter(job__home=home, completed_at__gte=start)
         .annotate(day=TruncDate("completed_at"))
         .values("day")
-        .annotate(points=Sum(F("value") - F("bonus")))
+        .annotate(
+            points=Sum(F("value") - F("bonus")),
+            jobs=Count("id"),
+            # The same test as a completion's `on_time` in the activity feed.
+            on_time=Count("id", filter=Q(due_at__isnull=False, completed_at__lte=F("due_at"))),
+            late=Count("id", filter=Q(due_at__isnull=False, completed_at__gt=F("due_at"))),
+        )
     )
-    lookup = {row["day"]: row["points"] for row in per_day}
+    lookup = {row["day"]: row for row in per_day}
+
+    def daily(field: str) -> list[int]:
+        return [lookup[d][field] if d in lookup else 0 for d in dates]
 
     return HomeUpkeep(
         home_id=home.id,
         ideal_per_week=sum(j.points_per_week for j in jobs),
         dates=[datetime.combine(d, datetime.min.time()) for d in dates],
-        daily_points=[lookup.get(d, 0) for d in dates],
+        daily_points=daily("points"),
+        daily_jobs=daily("jobs"),
+        daily_on_time=daily("on_time"),
+        daily_late=daily("late"),
         jobs=jobs,
     )

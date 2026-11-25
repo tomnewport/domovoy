@@ -255,8 +255,9 @@ def home_upkeep(request: HttpRequest, home_id: int, days: int = Query(56, ge=7, 
     `ideal_per_week`: the points a week of every job done on schedule would
     earn (each job's occurrences per week, from its rules over a year, times
     its default value). `daily_points`: points actually earned each day of
-    the last `days`, without overdue bonuses. `jobs`: each job's share of the
-    ideal.
+    the last `days`, without overdue bonuses. `daily_jobs`, `daily_on_time`
+    and `daily_late`: jobs completed each day, and how many of those met or
+    missed a due date. `jobs`: each job's share of the ideal.
     """
     try:
         home = request.user.home_set.get(id=home_id)
