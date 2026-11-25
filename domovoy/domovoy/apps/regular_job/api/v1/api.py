@@ -60,7 +60,7 @@ def edit_regular_job_definition(
         job = RegularJobDefinition.objects.get(home__in=user_homes, id=definition_id)
     except RegularJobDefinition.DoesNotExist:
         raise HttpError(404, "Not found")
-    for k, v in changes.dict(exclude_none=True).items():
+    for k, v in changes.model_dump(exclude_none=True).items():
         setattr(job, k, v)
     job.save()
     if changes.rules:
@@ -79,7 +79,7 @@ def create_regular_job_definition(
     if home.regular_jobs.count() >= 500:
         raise HttpError(403, "Job definition limit exceeded")
 
-    new_job = RegularJobDefinition(home=home, **data.dict())
+    new_job = RegularJobDefinition(home=home, **data.model_dump())
     new_job.save()
     new_job.adjust()
 

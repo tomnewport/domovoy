@@ -107,7 +107,7 @@ class RegularJobDefinition(models.Model):
            H: Assign to whoever is around, as close to ideal date before holiday
         """
         solution = RuleComputeResult()
-        rules = Ruleset.parse_obj(self.rules)
+        rules = Ruleset.model_validate(self.rules)
         baseline = override_date or timezone.now().date()
         if not len(rules.rules):
             return None

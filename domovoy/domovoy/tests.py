@@ -149,3 +149,27 @@ class SecretKeyFallbackTests(TestCase):
             self.assertEqual(
                 DmvSettings().domovoy_server_secret_key_fallbacks, ["a", "b"]
             )
+
+
+class PydanticConfigTests(TestCase):
+    """Pydantic v2 models use `model_config`, ninja ModelSchemas use `Meta` (#14).
+
+    Pydantic reports class-based `Config` at import time, attributed to its own
+    internals, so TestRunner's warning filter can't catch it; this does.
+    """
+
+    def test_no_class_based_config(self):
+        import domovoy.urls  # noqa: F401 -- imports every API schema
+        from pydantic import BaseModel
+
+        def subclasses(cls):
+            for sub in cls.__subclasses__():
+                yield sub
+                yield from subclasses(sub)
+
+        ours = {c for c in subclasses(BaseModel) if c.__module__.startswith("domovoy.")}
+        self.assertGreater(len(ours), 10)
+        offenders = sorted(
+            f"{c.__module__}.{c.__qualname__}" for c in ours if "Config" in vars(c)
+        )
+        self.assertEqual(offenders, [])

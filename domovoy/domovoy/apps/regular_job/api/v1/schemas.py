@@ -16,9 +16,9 @@ class ClaimResponse(Schema):
 
 
 class RegularJobInstanceSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = RegularJobInstance
-        model_fields = [
+        fields = [
             "id",
             "job",
             "value",
@@ -37,9 +37,9 @@ class RegularJobDefinitionSchema(ModelSchema):
     def resolve_bonus(obj):
         return obj.bonus
 
-    class Config:
+    class Meta:
         model = RegularJobDefinition
-        model_fields = [
+        fields = [
             "id",
             "home",
             "name",

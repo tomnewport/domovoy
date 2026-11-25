@@ -19,7 +19,7 @@ import enum
 from datetime import timedelta, date
 from typing import Literal, Optional, Union, Annotated
 from dateutil.relativedelta import relativedelta
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from django.db import models
 from django.utils import timezone
 
@@ -63,8 +63,7 @@ class RuleCalendar(BaseModel):
     query: CalendarQuery
     match: list[str]
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     def evaluate(self, candidates):
         for option in candidates:
@@ -81,6 +80,9 @@ def generate_dates(from_date: date):
 
 
 class Ruleset(BaseModel):
+    # A plain [] default: Pydantic copies it per instance, and unlike
+    # default_factory it stays in the OpenAPI schema, so the generated TS type
+    # keeps `rules` required.
     rules: list[Rule] = []
 
     def find(self, start_date=None):
@@ -103,7 +105,7 @@ class RuleComputeResultParticipant(BaseModel):
 
 class RuleComputeResult(BaseModel):
     criticality: CriticalityLevel = Field(default=CriticalityLevel.LOW)
-    participants: list[RuleComputeResultParticipant] = Field(default=[])
+    participants: list[RuleComputeResultParticipant] = Field(default=[])  # see Ruleset.rules
     ideal_date: date = Field(default=date(1970, 1, 1))
     remark: str = Field(default="")
     assignee: int = Field(default=-1)
