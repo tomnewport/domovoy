@@ -177,9 +177,12 @@ by [`environment.py`](domovoy/domovoy/environment.py)):
 
 ## Deployment
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) deploys on push to
-`main` (prod, [domovoy.tdn.sh](https://domovoy.tdn.sh)) or `dev` (dev,
-[dom-dev.tdn.sh](https://dom-dev.tdn.sh)), after the `checks` job passes.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) deploys after the
+checks pass. A push to `main` deploys prod
+([domovoy.tdn.sh](https://domovoy.tdn.sh)), then resets dev's database to a
+copy of prod's and deploys `main` to dev
+([dom-dev.tdn.sh](https://dom-dev.tdn.sh)). To try any branch on dev before
+merging, use *Actions → Build and Deploy → Run workflow* on that branch.
 
 CI builds the image into Artifact Registry and runs migrations as a Cloud Run
 job against Neon Postgres. It then deploys the API to Cloud Run (scale to zero)
