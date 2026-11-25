@@ -118,8 +118,8 @@ dates, a human-readable `remark`) which is also stored on the job as
    This keeps relative standings while preventing scores from growing unbounded.
 4. Record a `RegularJobInstance` and re-assign the next occurrence.
 
-> The normalisation and dice math are the subtlest parts of the codebase and are
-> currently untested — see the testing issue.
+> The normalisation and dice math are the subtlest parts of the codebase; their
+> tests are in `domovoy/apps/regular_job/tests.py`.
 
 ## Authentication & abuse protection
 

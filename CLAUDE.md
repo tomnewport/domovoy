@@ -4,7 +4,7 @@ Guidance for AI assistants (and humans) working in this repository.
 
 ## What this is
 
-Domovoy is a household chore-sharing app: a **Django 5 + django-ninja** backend
+Domovoy is a household chore-sharing app: a **Django 6 + django-ninja** backend
 (`domovoy/`) serving a typed REST API, and a **Vue 3 + Vuetify + Pinia** SPA
 (`domovoy_app/`). See [`README.md`](README.md) for the product overview and
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the internals fit together.
@@ -53,10 +53,14 @@ npm run domovoy-types  # regenerate src/services/domovoy/schema.d.ts (no server 
 - The Django admin lives at `/krimba/`, not `/admin/`.
 - Email login links are currently **printed to stdout** (`utils/email.py`), not
   sent. Don't assume mail is delivered in dev.
-- The project pins Pydantic 2.x but some code still uses v1 APIs (`parse_obj`,
-  `.dict()`). Prefer v2 (`model_validate`, `model_dump`) in new code.
+- Use Pydantic v2 APIs only (`model_validate`, `model_dump`, `model_config`).
+  The test runner (`domovoy/testing.py`) turns Pydantic v1 deprecation warnings
+  into errors, so a `parse_obj` or `.dict()` call fails the test that reaches
+  it, and a dedicated test fails on any of our models with a class-based
+  `Config`.
 - The riskiest logic — `RegularJobDefinition.assign`/`claim` and the rules engine
-  — is currently untested. Take care when changing it and add tests alongside.
+  — is covered by `domovoy/apps/regular_job/tests.py`. Change it together with
+  its tests; CI runs the suite on SQLite and on Postgres.
 
 ## Working agreements
 

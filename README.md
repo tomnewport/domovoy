@@ -9,7 +9,7 @@ job using a transparent, score-balancing algorithm that keeps the workload fair
 over time, works around people's holidays, and nudges overdue tasks back into
 view with bonus points.
 
-- **Backend:** Django 5 + [django-ninja](https://django-ninja.dev/) REST API (SQLite by default, Postgres via `domovoy_database_url`)
+- **Backend:** Django 6 + [django-ninja](https://django-ninja.dev/) REST API (SQLite by default, Postgres via `domovoy_database_url`)
 - **Frontend:** Vue 3 + Vuetify 3 + Pinia single-page app
 - **Auth:** passwordless email magic-links (optional password), with
   [hashcash](https://en.wikipedia.org/wiki/Hashcash) proof-of-work to throttle abuse
