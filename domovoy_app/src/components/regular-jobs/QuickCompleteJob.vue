@@ -22,20 +22,23 @@ watch(jobDefinitionId, () => {
 })
 </script>
 <template>
+  <!-- Opened by hand rather than through the dialog's activator slot: the
+       activator's attributes, aria-label included, land on v-fab's wrapper
+       div, which would leave the button itself without a name. -->
+  <v-fab
+    class="me-4 mb-14"
+    color="primary"
+    location="bottom end"
+    fixed
+    appear
+    app
+    icon
+    @click="menu = true"
+  >
+    <v-icon icon="mdi-check" />
+    <span class="d-sr-only">Complete a job</span>
+  </v-fab>
   <v-dialog v-model="menu">
-    <template v-slot:activator="{ props: activatorProps }">
-      <v-fab
-        v-bind="activatorProps"
-        class="me-4 mb-14"
-        icon="mdi-check"
-        aria-label="Complete a job"
-        color="primary"
-        location="bottom end"
-        fixed
-        appear
-        app
-      ></v-fab>
-    </template>
     <template v-slot:default>
       <v-card v-if="jobDefinition === undefined">
         <v-card-title>Complete a job</v-card-title>
@@ -52,7 +55,7 @@ watch(jobDefinitionId, () => {
           disable-gutters
         ></v-autocomplete>
         <v-card-actions>
-          <v-btn>Cancel</v-btn>
+          <v-btn @click="menu = false">Cancel</v-btn>
           <v-spacer></v-spacer>
         </v-card-actions>
       </v-card>

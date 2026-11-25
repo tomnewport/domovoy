@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive } from 'vue'
 import { type RuleDelay } from '@/stores/regular-job'
 const { value, onChange } = defineProps<{
   value: RuleDelay
@@ -10,14 +10,21 @@ const values = reactive({
   weeks: (value.weeks || 0).toString(),
   months: (value.months || 0).toString()
 })
-watch(values, async () => {
-  onChange({
+// Saved when a field is left (or Enter, or the arrows), not on every
+// keystroke: typing "12" would otherwise save 1 and then 12.
+function save() {
+  const next: RuleDelay = {
     rule: value.rule,
     days: parseInt(values.days) || 0,
     weeks: parseInt(values.weeks) || 0,
     months: parseInt(values.months) || 0
-  })
-})
+  }
+  const unchanged =
+    next.days === (value.days || 0) &&
+    next.weeks === (value.weeks || 0) &&
+    next.months === (value.months || 0)
+  if (!unchanged) onChange(next)
+}
 </script>
 <template>
   <v-card color="cyan-lighten-4" class="my-0 py-0">
@@ -31,6 +38,7 @@ watch(values, async () => {
             min="0"
             v-model="values.days"
             type="number"
+            @change="save"
           ></v-text-field>
         </v-col>
         <v-col>
@@ -40,6 +48,7 @@ watch(values, async () => {
             min="0"
             v-model="values.weeks"
             type="number"
+            @change="save"
           ></v-text-field>
         </v-col>
         <v-col>
@@ -49,6 +58,7 @@ watch(values, async () => {
             min="0"
             v-model="values.months"
             type="number"
+            @change="save"
           ></v-text-field>
         </v-col>
       </v-row>

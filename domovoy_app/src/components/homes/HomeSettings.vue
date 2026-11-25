@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { components } from '@/services/domovoy/schema.d.ts'
 import EditableItem from '@/components/common/EditableItem.vue'
 import { client, getHeaders } from '@/services/domovoy'
+import { apiErrorMessage } from '@/services/domovoy/errors'
 import { useHomesStore } from '@/stores/homes'
 import { useRegularJobStore } from '@/stores/regular-job'
 import { memberColors, textOn } from '@/utils/memberColors'
@@ -15,11 +16,12 @@ const homesStore = useHomesStore()
 const regularJobStore = useRegularJobStore()
 
 async function update(body: { name?: string; description?: string }) {
-  await client.PATCH('/api/homes/v1/homes/{home_id}', {
+  const { response, error } = await client.PATCH('/api/homes/v1/homes/{home_id}', {
     params: { path: { home_id: String(home.id) } },
     body,
     headers: getHeaders()
   })
+  if (!response.ok) throw new Error(apiErrorMessage(error, 'Could not save the change'))
   await homesStore.reloadHomes()
 }
 const setName = (name: string) => update({ name })

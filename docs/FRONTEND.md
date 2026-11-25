@@ -69,7 +69,6 @@ History-mode routes. Most carry a `meta.bottomNav` index for the bottom menu.
 | `/homes/:homeId/jobs` | `HomeJobsView` | Jobs in a home |
 | `/homes/:homeId/jobs/:jobId` | `HomeJobsView` | A single job |
 | `/profile` | `ProfileView` | Your own progress, activity and holidays (tabs; `?tab=activity` / `?tab=holidays`) |
-| `/reports` | `TasksView` | Reports tab |
 | `/register` | `RegisterView` | Sign up |
 | `/auth_link/:emailB64/:emailCode` | `AuthLinkLogin` | Magic-link landing page |
 | `/auth_link/error` | `AuthLinkError` | Magic-link failure page |

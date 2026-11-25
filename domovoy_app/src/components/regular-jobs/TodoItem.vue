@@ -25,7 +25,7 @@ const {
         >{{ job.name }}</span
       >
       <v-spacer></v-spacer>
-      <span class="text-body-2"
+      <span v-if="job.next_assigned_to" class="text-body-2"
         ><d-user-display variant="short">{{ job.next_assigned_to }}</d-user-display></span
       >
     </v-list-item-title>
@@ -34,10 +34,11 @@ const {
         <d-home-display>{{ job.home }}</d-home-display>
       </span>
       <v-spacer></v-spacer>
-      <span v-if="showDate === 'due'">
+      <span v-if="classification === JobClassification.UNSCHEDULED">Not scheduled</span>
+      <span v-else-if="showDate === 'due'">
         <d-date-display variant="natural">{{ job.next_assigned_due_date }}</d-date-display>
       </span>
-      <span v-if="showDate === 'assigned'">
+      <span v-else-if="showDate === 'assigned'">
         assigned <d-date-display variant="natural">{{ job.next_assigned_date }}</d-date-display>
       </span>
     </v-list-item-subtitle>
@@ -61,7 +62,7 @@ const {
         <v-icon color="blue-lighten-1">mdi-calendar</v-icon>
       </v-avatar>
       <v-avatar v-else-if="classification === JobClassification.UNSCHEDULED" color="white">
-        <v-icon color="white">mdi-alert-circle</v-icon>
+        <v-icon color="blue-lighten-1">mdi-calendar-blank-outline</v-icon>
       </v-avatar>
     </template>
   </v-list-item>

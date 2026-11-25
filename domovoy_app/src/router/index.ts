@@ -52,12 +52,6 @@ const router = createRouter({
       meta: { bottomNav: 2 }
     },
     {
-      path: '/reports',
-      name: 'reports',
-      component: () => import('@/views/TasksView.vue'),
-      meta: { bottomNav: 3 }
-    },
-    {
       path: '/register',
       name: 'register',
       component: () => import('@/views/RegisterView.vue'),
