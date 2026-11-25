@@ -2,6 +2,8 @@
 import type { RuleComputeResult } from '@/stores/regular-job'
 
 const { value } = defineProps<{ value: RuleComputeResult }>()
+
+const total = (rolls: number[]) => rolls.reduce((a, b) => a + b, 0)
 </script>
 <template>
   <v-list class="py-0">
@@ -15,8 +17,15 @@ const { value } = defineProps<{ value: RuleComputeResult }>()
         {{ participant.user_name }}
       </v-list-item-title>
       <v-list-item-subtitle>
-        <v-icon :key="idx" v-for="(roll, idx) of participant.rolls">mdi-dice-{{ roll }}</v-icon> =
-        {{ participant.rolls.reduce((a, b) => a + b, 0) }}
+        <!-- A roll of 0 marks the current assignee, kept when the job was edited. -->
+        <v-icon
+          :key="idx"
+          v-for="(roll, idx) of participant.rolls"
+          :title="roll === 0 ? 'Kept as assignee' : undefined"
+          >{{ roll === 0 ? 'mdi-pin' : `mdi-dice-${roll}` }}</v-icon
+        >
+        =
+        {{ total(participant.rolls) }}
       </v-list-item-subtitle>
     </v-list-item>
   </v-list>

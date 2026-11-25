@@ -38,10 +38,10 @@ def list_all_regular_job_definition(
         shortlist = shortlist.filter(home__id=home_id)
 
     if assignee == "*":
-        shortlist = shortlist.exclude(assigned_to=None)
+        shortlist = shortlist.exclude(next_assigned_to=None)
 
     if isinstance(assignee, int):
-        shortlist = shortlist.filter(assigned_to__user__id=assignee)
+        shortlist = shortlist.filter(next_assigned_to_id=assignee)
 
     return shortlist
 

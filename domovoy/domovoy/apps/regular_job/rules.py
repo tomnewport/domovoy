@@ -94,7 +94,9 @@ class RuleComputeResultParticipant(BaseModel):
     user_id: int
     user_name: str
     score: int
-    rolls: list[Literal[1, 2, 3, 4, 5, 6]]
+    # Dice values; a single 0 means the current assignee was kept
+    # (assign(preserve_member=True)).
+    rolls: list[Literal[0, 1, 2, 3, 4, 5, 6]]
     tiebreak: float
     first_available: date
 

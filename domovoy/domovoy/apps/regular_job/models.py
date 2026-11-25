@@ -61,9 +61,15 @@ class RegularJobDefinition(models.Model):
         return min(max_bonus, int(self.value_default * (max(0, int(self.days_overdue)) / self.open_for_days) * (self.home.overdue_bounty / 100)))
 
     def snooze_options(self) -> list[SnoozeOption]:
-        skips = [self.assign(self.next_assigned_due_date.date())]
+        if not self.next_assigned_due_date:
+            return []
+        # Each skip is the next ideal date after the previous one, starting
+        # from the current due date.
+        skips = [self.assign(override_date=self.next_assigned_due_date.date())]
+        if skips[0] is None:  # no rules, so no schedule to skip along
+            return []
         for _ in range(6):
-            skips.append(self.assign(skips[-1].ideal_date))
+            skips.append(self.assign(override_date=skips[-1].ideal_date))
 
         today = timezone.now().date()
 
@@ -112,7 +118,7 @@ class RegularJobDefinition(models.Model):
                 self.home.d6_min,
             )
             rolls = [randrange(1, 7) for _ in range(n_dice)]
-            if preserve_member and assignee == self.next_assigned_to:
+            if preserve_member and assignee.user_id == self.next_assigned_to_id:
                 # Rolls 0 to keep same assignee
                 rolls = [0]
             tiebreak = random()
