@@ -22,23 +22,23 @@ class UpdateHomeRequest(Schema):
 class MembershipSchema(ModelSchema):
     user: UserSchema
 
-    class Config:
+    class Meta:
         model = Membership
-        model_fields = ["score"]
+        fields = ["score"]
 
 
 class HomeSchema(ModelSchema):
     memberships: list[MembershipSchema]
 
-    class Config:
+    class Meta:
         model = Home
-        model_fields = ["id", "name", "description"]
+        fields = ["id", "name", "description"]
 
 
 class HomeOnlySchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Home
-        model_fields = ["id", "name", "description"]
+        fields = ["id", "name", "description"]
 
 
 class MembershipWithHomeSchema(MembershipSchema):
@@ -48,9 +48,9 @@ class MembershipWithHomeSchema(MembershipSchema):
 class HolidaySchema(ModelSchema):
     membership: MembershipWithHomeSchema
 
-    class Config:
+    class Meta:
         model = Holiday
-        model_fields = ["id", "note", "membership", "from_date", "to_date"]
+        fields = ["id", "note", "membership", "from_date", "to_date"]
 
 
 class UpdateHolidaySchema(Schema):

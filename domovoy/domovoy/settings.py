@@ -73,6 +73,9 @@ AUTH_USER_MODEL = "dmv_user.DmvUser"
 
 # Application definition
 
+# Fails tests on deprecated Pydantic v1 APIs (domovoy/testing.py).
+TEST_RUNNER = "domovoy.testing.TestRunner"
+
 INSTALLED_APPS = [
     "corsheaders",
     "django.contrib.admin",
