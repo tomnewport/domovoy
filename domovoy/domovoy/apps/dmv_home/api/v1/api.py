@@ -12,6 +12,7 @@ from domovoy.apps.dmv_home.api.v1.schemas import (
     UpdateHomeRequest,
     HolidaySchema,
     CreateHolidaySchema,
+    UpdateHolidaySchema,
 )
 
 homes_v1_router = Router(tags=["Homes"], auth=[SessionHeader()])
@@ -69,12 +70,16 @@ def update_home(request: HttpRequest, home_id: str, body: UpdateHomeRequest):
 
 
 @homes_v1_router.get("holidays", response={200: list[HolidaySchema]})
-def list_upcoming_holidays(request: HttpRequest) -> Manager[Holiday]:
-    """Your holidays that haven't ended yet, soonest first."""
+def list_upcoming_holidays(
+    request: HttpRequest, include_past: bool = False
+) -> Manager[Holiday]:
+    """Your holidays, earliest first: those that haven't ended yet (a holiday
+    runs to the end of its last day), or all of them with `include_past`."""
     memberships = get_user_memberships(request)
-    return Holiday.objects.filter(
-        membership__in=memberships, to_date__gte=timezone.now()
-    ).order_by("from_date")
+    holidays = Holiday.objects.filter(membership__in=memberships)
+    if not include_past:
+        holidays = holidays.filter(to_date__date__gte=timezone.now().date())
+    return holidays.order_by("from_date")
 
 
 @homes_v1_router.delete("holidays/{holiday_id}", response={200: None})
@@ -84,6 +89,23 @@ def delete_holiday(request: HttpRequest, holiday_id: str):
     except Holiday.DoesNotExist:
         raise HttpError(404, "Not found")
     holiday.delete()
+
+
+@homes_v1_router.patch("holidays/{holiday_id}", response={200: HolidaySchema})
+def update_holiday(request: HttpRequest, holiday_id: str, data: UpdateHolidaySchema):
+    try:
+        holiday = Holiday.objects.get(membership__user=request.user, id=holiday_id)
+    except Holiday.DoesNotExist:
+        raise HttpError(404, "Not found")
+    if data.from_date > data.to_date:
+        raise HttpError(400, "From date must be before to date")
+    if data.to_date.date() < timezone.now().date():
+        raise HttpError(400, "Must end in the future")
+    holiday.from_date = data.from_date
+    holiday.to_date = data.to_date
+    holiday.note = data.note
+    holiday.save()
+    return holiday
 
 
 @homes_v1_router.post("holidays/", response={200: None})

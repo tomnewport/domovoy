@@ -86,3 +86,65 @@ class HomeApiPermissionTests(TestCase):
             self.assertEqual(create(f"Home {i}").status_code, 200)
         self.assertEqual(create("One too many").status_code, 403)
         self.assertEqual(self.alice.memberships.count(), 5)
+
+
+class HolidayBrowsingTests(TestCase):
+    """Past holidays on request, a holiday shown through its last day, and edits."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice, cls.bob = make_user("alice"), make_user("bob")
+        home = Home.objects.create(name="Flat")
+        cls.alice_m = Membership.objects.create(user=cls.alice, home=home)
+        cls.bob_m = Membership.objects.create(user=cls.bob, home=home)
+        today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        cls.past = Holiday.objects.create(
+            membership=cls.alice_m, note="Past",
+            from_date=today - timedelta(days=20), to_date=today - timedelta(days=15),
+        )
+        # Stored as midnight at the start of its last day, as the date picker sends it.
+        cls.ends_today = Holiday.objects.create(
+            membership=cls.alice_m, note="Ends today",
+            from_date=today - timedelta(days=2), to_date=today,
+        )
+        cls.bobs = Holiday.objects.create(
+            membership=cls.bob_m, note="Bob's",
+            from_date=today + timedelta(days=1), to_date=today + timedelta(days=2),
+        )
+
+    def setUp(self):
+        self.api = ApiClient(self.alice)
+
+    def notes(self, query=""):
+        return [h["note"] for h in self.api.get(f"/api/homes/v1/holidays{query}").json()]
+
+    def test_a_holiday_is_listed_through_its_last_day(self):
+        self.assertEqual(self.notes(), ["Ends today"])
+
+    def test_include_past(self):
+        self.assertEqual(self.notes("?include_past=true"), ["Past", "Ends today"])
+
+    def edit(self, holiday, days_from, days_to, note="Edited"):
+        today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return self.api.patch_json(
+            f"/api/homes/v1/holidays/{holiday.id}",
+            {
+                "note": note,
+                "from_date": (today + timedelta(days=days_from)).isoformat(),
+                "to_date": (today + timedelta(days=days_to)).isoformat(),
+            },
+        )
+
+    def test_edit_own_holiday(self):
+        response = self.edit(self.ends_today, 0, 3)
+        self.assertEqual(response.status_code, 200, response.content[:300])
+        self.assertEqual(response.json()["note"], "Edited")
+        self.ends_today.refresh_from_db()
+        self.assertEqual(self.ends_today.note, "Edited")
+
+    def test_edits_are_validated_and_private(self):
+        self.assertEqual(self.edit(self.ends_today, 3, 1).status_code, 400)
+        self.assertEqual(self.edit(self.past, -20, -15).status_code, 400)
+        self.assertEqual(self.edit(self.bobs, 1, 2).status_code, 404)
+        self.bobs.refresh_from_db()
+        self.assertEqual(self.bobs.note, "Bob's")

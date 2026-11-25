@@ -108,12 +108,19 @@ beyond). `409` if the name is taken.
 Body — `UpdateHomeRequest` (optional `name`, `description`). `403` if not a
 member.
 
-### `GET /holidays` — list my upcoming holidays
+### `GET /holidays` — list my holidays
+Those that haven't ended yet (a holiday runs to the end of its last day),
+earliest first; `?include_past=true` returns all of them.
 `200` → `list[HolidaySchema]` (includes the nested membership + home).
 
 ### `POST /holidays/` — create a holiday
 Body — `CreateHolidaySchema` (`home_id`, `from_date`, `to_date`, `note`).
 Validates `from_date ≤ to_date` and that it ends in the future. `200` → empty.
+
+### `PATCH /holidays/{holiday_id}` — edit a holiday
+Body — `UpdateHolidaySchema` (`from_date`, `to_date`, `note`). Same validation
+as creating one. Only the owning user's holidays; `404` otherwise.
+`200` → `HolidaySchema`.
 
 ### `DELETE /holidays/{holiday_id}` — delete a holiday
 Only the owning user's holidays. `404` otherwise. `200` → empty.
@@ -164,11 +171,24 @@ occurrence.
 ### `GET /definitions/{definition_id}/snooze` — snooze options
 `200` → `list[SnoozeOption]` (`{ label, date }`) — suggested later dates.
 
-> `snooze_options()` currently mis-passes its date argument — see issue #13.
 
 ### `POST /definitions/{definition_id}/snooze` — snooze to a date
 Query param `new_date`. Reschedules the current assignment's due/start dates.
 `200` → empty.
+
+### `GET /statistics` — points per member per day, for one home
+Query params `home_id` and `days` (1–365, default 30). `404` if you aren't a
+member. `200` → `HomeStatistics`: `dates` (one per day, oldest first) and, per
+member, `id`, `name`, `name_short`, `relative_score` (the fairness balance) and
+`daily_scores` (points earned each day).
+
+### `GET /instances` — recent completions across your homes
+Newest first. Optional query params: `home_id`, `user_id`, `since` (datetime),
+`before` (datetime; pass the last item's `completed_at` for the next page) and
+`limit` (1–100, default 30). `200` → `list[JobCompletionSchema]`: `id`,
+`job_id`, `job_name`, `home_id`, `value` (points, including any overdue bonus),
+`completed_by_id`, `completed_at`, `due_at`, and `on_time` (completed by the end
+of its due date; `null` if it had none).
 
 ---
 

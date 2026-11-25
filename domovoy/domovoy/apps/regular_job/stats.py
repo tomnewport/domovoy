@@ -16,6 +16,7 @@ User = get_user_model()
 class UserStatistics(pydantic.BaseModel):
     id: int
     name: str
+    name_short: str
     relative_score: int
     daily_scores: List[int]
 
@@ -52,6 +53,7 @@ def get_statistics(user: User, home: Home, days: int = 30):
             UserStatistics(
                 id=membership.user.id,
                 name=membership.user.name_full,
+                name_short=membership.user.name_short or membership.user.name_full,
                 relative_score=membership.score,
                 daily_scores=[lookup.get((membership.user.id, d), 0) for d in dates],
             )
