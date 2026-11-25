@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import PointsRaceChart from '@/components/charts/PointsRaceChart.vue'
+import HomeUpkeep from './HomeUpkeep.vue'
 import { memberColors } from '@/utils/memberColors'
-import type { HomeStatistics } from '@/services/domovoy/stats'
+import type { HomeStatistics, HomeUpkeep as Upkeep } from '@/services/domovoy/stats'
 import { ordinal, standings, type Period } from './progress'
 
 // Where you stand in one home this period: a ranked list and everyone's
 // running total on the same axes.
-const { stats, period, homeName } = defineProps<{
+const { stats, period, homeName, upkeep } = defineProps<{
   stats: HomeStatistics
   period: Period
   homeName: string
+  upkeep?: Upkeep
 }>()
 
 const ranked = computed(() => standings(stats, period))
@@ -51,6 +53,10 @@ const chartDates = computed(() => stats.dates.slice(-period))
 <template>
   <v-card class="pa-4" variant="tonal">
     <div class="text-overline text-medium-emphasis">{{ homeName }}</div>
+    <template v-if="upkeep">
+      <HomeUpkeep :upkeep="upkeep" :period="period" />
+      <v-divider class="my-4" />
+    </template>
     <div class="text-subtitle-1 mb-3">{{ headline }}</div>
 
     <ol class="standings">

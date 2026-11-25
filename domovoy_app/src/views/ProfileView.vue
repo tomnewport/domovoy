@@ -13,7 +13,9 @@ import { useHomesStore } from '@/stores/homes'
 import {
   fetchAllCompletions,
   fetchStatistics,
+  fetchUpkeep,
   type HomeStatistics,
+  type HomeUpkeep,
   type JobCompletion
 } from '@/services/domovoy/stats'
 import {
@@ -39,6 +41,7 @@ const me = computed(() => sessionStore.session?.id ?? null)
 // Overview data: each home's statistics and your own completions, both over
 // two periods so this one can be compared with the one before.
 const stats = ref<HomeStatistics[] | null>(null)
+const upkeep = ref<HomeUpkeep[] | null>(null)
 const mine = ref<JobCompletion[] | null>(null)
 const loadError = ref<string | null>(null)
 
@@ -46,16 +49,20 @@ async function loadOverview() {
   if (!me.value) return
   loadError.value = null
   stats.value = null
+  upkeep.value = null
   mine.value = null
   try {
     await homesStore.ensureLoaded()
     const homes = homesStore.homes ?? []
     const since = subDays(startOfDay(new Date()), period.value * 2 - 1)
-    const [homeStats, completions] = await Promise.all([
+    const [homeStats, homeUpkeep, completions] = await Promise.all([
       Promise.all(homes.map((home) => fetchStatistics(home.id as number, period.value * 2))),
+      // Eight weeks: the weekly columns, and enough for a 30-day period.
+      Promise.all(homes.map((home) => fetchUpkeep(home.id as number, 56))),
       fetchAllCompletions({ userId: me.value, since })
     ])
     stats.value = homeStats
+    upkeep.value = homeUpkeep
     mine.value = completions
   } catch {
     loadError.value = 'Could not load your progress.'
@@ -72,7 +79,11 @@ const totals = computed(() => (mine.value ? completionsByPeriod(mine.value, peri
 const streak = computed(() => (mine.value ? currentStreak(mine.value) : 0))
 const homeName = (id: number) => homesStore.homes?.find((h) => h.id === id)?.name ?? ''
 const statsWithHomes = computed(() =>
-  (stats.value ?? []).map((s, i) => ({ stats: s, home: homesStore.homes?.[i] }))
+  (stats.value ?? []).map((s, i) => ({
+    stats: s,
+    upkeep: upkeep.value?.[i],
+    home: homesStore.homes?.[i]
+  }))
 )
 </script>
 <template>
@@ -130,6 +141,7 @@ const statsWithHomes = computed(() =>
               :key="entry.home?.id ?? entry.stats.base_date"
               :stats="entry.stats"
               :period="period"
+              :upkeep="entry.upkeep"
               :home-name="entry.home ? homeName(entry.home.id as number) : ''"
               class="mb-4"
             />

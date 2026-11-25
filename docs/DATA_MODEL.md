@@ -118,6 +118,7 @@ An immutable record of one completion.
 | --- | --- | --- |
 | `job` | FK → RegularJobDefinition (CASCADE) | `related_name="instances"` |
 | `value` | uint16 | Points awarded (incl. any bonus) |
+| `bonus` | uint16 | The overdue-bonus part of `value`; `value - bonus` is the job's own points (used by upkeep). Recorded from migration `0002`; earlier rows hold an estimate (`value` above the job's `value_max`) |
 | `completed_by` | FK → DmvUser (PROTECT) | `related_name="regular_jobs"` |
 | `assigned_at` / `can_start_at` / `due_at` / `completed_at` | datetime, nullable | Snapshot of the assignment at completion time |
 
