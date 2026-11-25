@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from ninja import ModelSchema, Schema
@@ -13,6 +14,20 @@ class ClaimResponse(Schema):
     value: int
     statistics: HomeStatistics
     result: Optional[RuleComputeResult]
+
+
+class JobCompletionSchema(Schema):
+    """One completed job, for activity feeds."""
+
+    id: int
+    job_id: int
+    job_name: str
+    home_id: int
+    value: int  # points earned, including any overdue bonus
+    completed_by_id: int
+    completed_at: datetime
+    due_at: Optional[datetime]
+    on_time: Optional[bool]  # completed by the end of its due date; None if it had none
 
 
 class RegularJobInstanceSchema(ModelSchema):

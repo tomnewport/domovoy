@@ -118,7 +118,8 @@ export interface paths {
         };
         /**
          * List Upcoming Holidays
-         * @description Your holidays that haven't ended yet, soonest first.
+         * @description Your holidays, earliest first: those that haven't ended yet (a holiday
+         *     runs to the end of its last day), or all of them with `include_past`.
          */
         get: operations["domovoy_apps_dmv_home_api_v1_api_list_upcoming_holidays"];
         put?: never;
@@ -143,7 +144,8 @@ export interface paths {
         delete: operations["domovoy_apps_dmv_home_api_v1_api_delete_holiday"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Holiday */
+        patch: operations["domovoy_apps_dmv_home_api_v1_api_update_holiday"];
         trace?: never;
     };
     "/api/homes/v1/holidays/": {
@@ -228,6 +230,50 @@ export interface paths {
         put?: never;
         /** Snooze */
         post: operations["domovoy_apps_regular_job_api_v1_api_snooze"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/regular_jobs/v1/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Home Statistics
+         * @description Each member's points per day over the last `days` days, for one of your homes.
+         */
+        get: operations["domovoy_apps_regular_job_api_v1_api_home_statistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/regular_jobs/v1/instances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Completions
+         * @description Jobs completed in your homes, newest first.
+         *
+         *     Narrow it to one home (`home_id`) or one member (`user_id`), to completions
+         *     from `since` onwards, and page back with `before` (the `completed_at` of
+         *     the last item you have).
+         */
+        get: operations["domovoy_apps_regular_job_api_v1_api_list_completions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -413,6 +459,21 @@ export interface components {
              */
             score: number;
             home: components["schemas"]["HomeOnlySchema"];
+        };
+        /** UpdateHolidaySchema */
+        UpdateHolidaySchema: {
+            /**
+             * From Date
+             * Format: date-time
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date-time
+             */
+            to_date: string;
+            /** Note */
+            note: string;
         };
         /** CreateHolidaySchema */
         CreateHolidaySchema: {
@@ -640,6 +701,8 @@ export interface components {
             id: number;
             /** Name */
             name: string;
+            /** Name Short */
+            name_short: string;
             /** Relative Score */
             relative_score: number;
             /** Daily Scores */
@@ -659,6 +722,33 @@ export interface components {
              * Format: date
              */
             date: string;
+        };
+        /**
+         * JobCompletionSchema
+         * @description One completed job, for activity feeds.
+         */
+        JobCompletionSchema: {
+            /** Id */
+            id: number;
+            /** Job Id */
+            job_id: number;
+            /** Job Name */
+            job_name: string;
+            /** Home Id */
+            home_id: number;
+            /** Value */
+            value: number;
+            /** Completed By Id */
+            completed_by_id: number;
+            /**
+             * Completed At
+             * Format: date-time
+             */
+            completed_at: string;
+            /** Due At */
+            due_at: string | null;
+            /** On Time */
+            on_time: boolean | null;
         };
     };
     responses: never;
@@ -861,7 +951,9 @@ export interface operations {
     };
     domovoy_apps_dmv_home_api_v1_api_list_upcoming_holidays: {
         parameters: {
-            query?: never;
+            query?: {
+                include_past?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -896,6 +988,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    domovoy_apps_dmv_home_api_v1_api_update_holiday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                holiday_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHolidaySchema"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidaySchema"];
+                };
             };
         };
     };
@@ -1083,6 +1201,55 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    domovoy_apps_regular_job_api_v1_api_home_statistics: {
+        parameters: {
+            query: {
+                home_id: number;
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeStatistics"];
+                };
+            };
+        };
+    };
+    domovoy_apps_regular_job_api_v1_api_list_completions: {
+        parameters: {
+            query?: {
+                home_id?: number | null;
+                user_id?: number | null;
+                since?: string | null;
+                before?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobCompletionSchema"][];
+                };
             };
         };
     };

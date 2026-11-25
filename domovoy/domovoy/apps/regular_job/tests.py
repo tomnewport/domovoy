@@ -569,3 +569,92 @@ class BeforeMidnightTests(SimpleTestCase):
         self.assertEqual(
             before_midnight(date(2030, 1, 7), "America/New_York"), self.utc(2030, 1, 8, 4, 59)
         )
+
+
+class ActivityApiTests(TestCase):
+    """The profile page's statistics and completion feed stay within your homes."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice, cls.bob, cls.carol = make_user("alice"), make_user("bob"), make_user("carol")
+        cls.home = Home.objects.create(name="Flat")
+        cls.other_home = Home.objects.create(name="Elsewhere")
+        Membership.objects.create(user=cls.alice, home=cls.home)
+        Membership.objects.create(user=cls.bob, home=cls.home)
+        Membership.objects.create(user=cls.carol, home=cls.other_home)
+        rules = Ruleset(rules=[RuleDelay(weeks=1)]).model_dump(mode="json")
+        job = dict(value_max=10, value_min=1, value_default=5, rules=rules)
+        cls.bins = RegularJobDefinition.objects.create(home=cls.home, name="Bins", **job)
+        cls.other_job = RegularJobDefinition.objects.create(
+            home=cls.other_home, name="Not yours", **job
+        )
+        now = timezone.now()
+        cls.now = now
+
+        def done(user, job, hours_ago, value, due_hours_ago=None):
+            return RegularJobInstance.objects.create(
+                job=job,
+                value=value,
+                completed_by=user,
+                completed_at=now - timedelta(hours=hours_ago),
+                due_at=None if due_hours_ago is None else now - timedelta(hours=due_hours_ago),
+            )
+
+        cls.alice_early = done(cls.alice, cls.bins, 50, 3, due_hours_ago=10)  # before due
+        cls.bob_late = done(cls.bob, cls.bins, 30, 7, due_hours_ago=40)  # after due
+        cls.alice_undated = done(cls.alice, cls.bins, 2, 5)  # no due date
+        done(cls.carol, cls.other_job, 1, 9)
+
+    def setUp(self):
+        self.api = ApiClient(self.alice)
+
+    def feed(self, query=""):
+        response = self.api.get(f"/api/regular_jobs/v1/instances{query}")
+        self.assertEqual(response.status_code, 200, response.content[:300])
+        return response.json()
+
+    def test_feed_is_newest_first_and_only_your_homes(self):
+        items = self.feed()
+        self.assertEqual(
+            [i["id"] for i in items],
+            [self.alice_undated.id, self.bob_late.id, self.alice_early.id],
+        )
+        self.assertEqual(
+            {k: items[1][k] for k in ("job_name", "home_id", "value", "completed_by_id")},
+            {"job_name": "Bins", "home_id": self.home.id, "value": 7, "completed_by_id": self.bob.id},
+        )
+
+    def test_feed_on_time_flag(self):
+        on_time = {i["id"]: i["on_time"] for i in self.feed()}
+        self.assertEqual(
+            on_time,
+            {self.alice_early.id: True, self.bob_late.id: False, self.alice_undated.id: None},
+        )
+
+    def test_feed_filters_and_paging(self):
+        mine = self.feed(f"?user_id={self.alice.id}")
+        self.assertEqual({i["completed_by_id"] for i in mine}, {self.alice.id})
+        recent = self.feed(f"?since={(self.now - timedelta(hours=40)).isoformat().replace('+', '%2B')}")
+        self.assertEqual(len(recent), 2)
+        first_page = self.feed("?limit=2")
+        rest = self.feed(f"?before={first_page[-1]['completed_at'].replace('+', '%2B')}")
+        self.assertEqual([i["id"] for i in first_page + rest], [i["id"] for i in self.feed()])
+        self.assertEqual(self.feed(f"?home_id={self.other_home.id}"), [])
+
+    def test_statistics_for_your_home_only(self):
+        response = self.api.get(f"/api/regular_jobs/v1/statistics?home_id={self.home.id}&days=7")
+        self.assertEqual(response.status_code, 200, response.content[:300])
+        stats = response.json()
+        self.assertEqual(len(stats["dates"]), 7)
+        self.assertEqual(stats["self"], self.alice.id)
+        by_name = {u["name_short"]: sum(u["daily_scores"]) for u in stats["users"]}
+        self.assertEqual(by_name, {"Alice": 8, "Bob": 7})
+        other = self.api.get(f"/api/regular_jobs/v1/statistics?home_id={self.other_home.id}")
+        self.assertEqual(other.status_code, 404)
+
+    def test_statistics_window_is_bounded(self):
+        for days in (0, 366):
+            response = self.api.get(
+                f"/api/regular_jobs/v1/statistics?home_id={self.home.id}&days={days}"
+            )
+            self.assertEqual(response.status_code, 422, days)

@@ -2,8 +2,8 @@ from typing import Optional, Union, Literal
 
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
-from ninja import Router
-from datetime import date, timedelta
+from ninja import Query, Router
+from datetime import date, datetime, timedelta
 from django.utils import timezone
 
 from domovoy.apps.regular_job.rules import SnoozeOption
@@ -13,10 +13,11 @@ from ninja.errors import HttpError
 from domovoy.apps.regular_job.api.v1.schemas import (
     RegularJobDefinitionSchema,
     CreateRegularJobDefinitionRequest,
-    CreateRegularJobInstanceRequest, RegularJobDefinitionEditSchema, RegularJobInstanceSchema, ClaimResponse
+    CreateRegularJobInstanceRequest, RegularJobDefinitionEditSchema, RegularJobInstanceSchema, ClaimResponse,
+    JobCompletionSchema,
 )
 from domovoy.apps.dmv_home.models import Home
-from domovoy.apps.regular_job.models import RegularJobDefinition
+from domovoy.apps.regular_job.models import RegularJobDefinition, RegularJobInstance
 
 from domovoy.apps.regular_job.stats import HomeStatistics, get_statistics
 
@@ -156,3 +157,57 @@ def snooze(request: HttpRequest, definition_id: int, new_date: date):
         days=definition.open_for_days
     )
     definition.save()
+
+
+@regular_jobs_v1_router.get("/statistics", response={200: HomeStatistics})
+def home_statistics(
+    request: HttpRequest, home_id: int, days: int = Query(30, ge=1, le=365)
+):
+    """Each member's points per day over the last `days` days, for one of your homes."""
+    try:
+        home = request.user.home_set.get(id=home_id)
+    except Home.DoesNotExist:
+        raise HttpError(404, "Home not found")
+    return get_statistics(request.user, home, days)
+
+
+@regular_jobs_v1_router.get("/instances", response={200: list[JobCompletionSchema]})
+def list_completions(
+    request: HttpRequest,
+    home_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    since: Optional[datetime] = None,
+    before: Optional[datetime] = None,
+    limit: int = Query(30, ge=1, le=100),
+):
+    """Jobs completed in your homes, newest first.
+
+    Narrow it to one home (`home_id`) or one member (`user_id`), to completions
+    from `since` onwards, and page back with `before` (the `completed_at` of
+    the last item you have).
+    """
+    completions = RegularJobInstance.objects.filter(
+        job__home__in=request.user.home_set.all(), completed_at__isnull=False
+    ).select_related("job")
+    if home_id is not None:
+        completions = completions.filter(job__home_id=home_id)
+    if user_id is not None:
+        completions = completions.filter(completed_by_id=user_id)
+    if since is not None:
+        completions = completions.filter(completed_at__gte=since)
+    if before is not None:
+        completions = completions.filter(completed_at__lt=before)
+    return [
+        JobCompletionSchema(
+            id=completion.id,
+            job_id=completion.job_id,
+            job_name=completion.job.name,
+            home_id=completion.job.home_id,
+            value=completion.value,
+            completed_by_id=completion.completed_by_id,
+            completed_at=completion.completed_at,
+            due_at=completion.due_at,
+            on_time=None if completion.due_at is None else completion.completed_at <= completion.due_at,
+        )
+        for completion in completions.order_by("-completed_at", "-id")[:limit]
+    ]
