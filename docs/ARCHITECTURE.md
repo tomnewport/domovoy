@@ -178,5 +178,6 @@ only the `__session` cookie, the GCP config renames the session cookie and keeps
 CSRF state in the session. The SPA's `x-session-key` header auth is unaffected.
 
 Once both GCP environments are verified, the cutover moves the SQLite data into
-Neon and repoints the `tdn.sh` DNS records (hosted at DigitalOcean). The VPS
+Neon and repoints the `tdn.sh` DNS records (hosted in Cloud DNS, project
+`tdnsh-dns`). The VPS
 jobs are then removed.
