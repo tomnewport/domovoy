@@ -145,22 +145,12 @@ pieces:
 - `src/stores/` — Pinia stores for session, homes, jobs, and the hashcash config.
 - `src/utils/hashcash.ts` — the client-side proof-of-work solver.
 
-## Deployment (today vs. target)
+## Deployment
 
-**Today** (`.github/workflows/ci.yml` + `deploy/`): on push to `main`/`dev`,
-after the `checks` gate, CI:
-
-- builds the frontend and `scp`s it to a single VPS,
-- builds and pushes the backend image to Docker Hub,
-- templates an nginx vhost and `docker-compose.yml`, copies them over SSH, and
-  runs `docker-compose up` and then the migrations.
-
-The database is an SQLite file on a host volume. Each deploy job has a
-per-branch concurrency group, so deploys don't overlap.
-
-**Target, being trialled in parallel** ([`DEPLOY_GCP.md`](DEPLOY_GCP.md)): GCP
-project `domovoy-tdnsh`, `europe-west2`, with dev deployed from `dev` and
-prod from `main`. The same workflow:
+[`DEPLOY_GCP.md`](DEPLOY_GCP.md) has the details. GCP project
+`domovoy-tdnsh`, `europe-west2`, with dev (`dom-dev.tdn.sh`) deployed from
+`dev` and prod (`domovoy.tdn.sh`) from `main`. On push, after the `checks`
+gate, `.github/workflows/ci.yml`:
 
 - builds the image into Artifact Registry and deploys it by digest;
 - runs `migrate` as a Cloud Run job against Neon Postgres (AWS eu-west-2, branches `production` and `dev`) over
@@ -176,8 +166,7 @@ GitHub holds only non-secret repository variables (no GitHub Environments,
 which private repos on GitHub Free may lack). Because Firebase forwards
 only the `__session` cookie, the GCP config renames the session cookie and keeps
 CSRF state in the session. The SPA's `x-session-key` header auth is unaffected.
+Each environment's deploys are serialised by a per-branch concurrency group.
 
-Once both GCP environments are verified, the cutover moves the SQLite data into
-Neon and repoints the `tdn.sh` DNS records (hosted in Cloud DNS, project
-`tdnsh-dns`). The VPS
-jobs are then removed.
+`tdn.sh` DNS is in Cloud DNS (project `tdnsh-dns`). Until 2026-11-25 the app
+ran on a single VPS with an SQLite file. The data moved to Neon at the cutover.

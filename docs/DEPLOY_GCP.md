@@ -1,13 +1,12 @@
 # Deploying to Google Cloud (Cloud Run + Firebase Hosting + Neon)
 
-This deployment runs **in parallel** with the VPS deployment
-([`README.md#deployment`](../README.md#deployment)) until the cutover below.
-There are two environments:
+This is Domovoy's deployment. It replaced a single VPS on 2026-11-25 (see
+"Cutover from the VPS"). There are two environments:
 
-| Environment | Git branch | Variable prefix | Cloud Run service | Firebase Hosting site | Neon branch |
-| --- | --- | --- | --- | --- | --- |
-| dev | `dev` | `GCP_DEV_` | `domovoy-dev` | `domovoy-tdnsh-dev.web.app` | `dev` |
-| prod | `main` | `GCP_PROD_` | `domovoy-prod` | `domovoy-tdnsh.web.app` | `production` |
+| Environment | Git branch | Domain | Variable prefix | Cloud Run service | Firebase Hosting site | Neon branch |
+| --- | --- | --- | --- | --- | --- | --- |
+| dev | `dev` | `dom-dev.tdn.sh` | `GCP_DEV_` | `domovoy-dev` | `domovoy-tdnsh-dev.web.app` | `dev` |
+| prod | `main` | `domovoy.tdn.sh` | `GCP_PROD_` | `domovoy-prod` | `domovoy-tdnsh.web.app` | `production` |
 
 GCP project `domovoy-tdnsh` (number `429045293034`), region `europe-west2`
 (London). The site names are the defaults in
@@ -160,9 +159,10 @@ done
 
 - Add the Django secret key **once**. A new version invalidates sessions and
   hashcash nonces on the next deploy, unless the old key goes into
-  `-secret-key-fallbacks` (see "Moving sessions over" in the cutover runbook).
-- `-secret-key-fallbacks` starts as `[]`. Prod gets the VPS key before the
-  cutover.
+  `-secret-key-fallbacks` (a JSON list; see `security/session_key.py`).
+- `-secret-key-fallbacks` starts as `[]` and stays that way unless you rotate
+  the key and want sessions to survive. Empty it again (and destroy the old
+  version) a few weeks later.
 - Setups bootstrapped before `-secret-key-fallbacks` existed: re-run
   `bootstrap.sh` (it creates the secret and its IAM binding), then add `[]`
   for both environments with the `printf` line above, **before** deploying a
@@ -204,13 +204,11 @@ job is skipped, so merging this PR before bootstrap leaves CI green.
 
 1. Push to `dev`, or re-run the latest `dev` workflow run. Watch `deploy-gcp`.
 2. Check the dev site (see "Verifying after a deploy").
-3. Either seed dev with a copy of the data (below), or create an admin user
-   with the **direct** URL. Run this from `domovoy/`, with the other required
-   `domovoy_*` variables set to anything:
+3. Either refresh dev from prod (see "Refreshing dev with a copy of prod
+   data"), or create an admin user with the **direct** URL. Run this from
+   `domovoy/`, with the other required `domovoy_*` variables set to anything:
    `domovoy_database_url='<dev direct url>' poetry run python manage.py createsuperuser`.
-4. Repeat for `main` → prod when ready. Keep prod's database **empty
-   apart from migrations** until the cutover (no test users), so the cutover
-   load is clean. Smoke-test prod with the `curl` checks below.
+4. Repeat for `main` → prod. Smoke-test prod with the `curl` checks below.
 
 ## Verifying after a deploy
 
@@ -266,163 +264,96 @@ In the console, use *Logging → Logs Explorer* with the same filter, or open
 to the project can read these links, which are live credentials until used or
 expired.
 
-## Seeding dev with a trial copy of the data
+## Refreshing dev with a copy of prod data
 
-You run this yourself; CI never touches data. Follow
-[DATABASE.md → Moving existing data](DATABASE.md#moving-existing-data-from-sqlite-to-postgres),
-but you don't need to stop the VPS for a trial:
+Dev's Neon branch is a child of `production`, so you can reset it to prod's
+current data: *Neon → Branches → dev → Reset from parent*. If `dev` has
+migrations that `main` doesn't yet, re-run the latest `dev` workflow
+afterwards, so the migrate job brings the schema forward. Session keys live
+in each browser's localStorage per origin, so expect to log in again on dev.
 
-1. Copy the prod SQLite file from the VPS
-   (`/opt/applications/domovoy/main/data/db.sqlite3`) into
-   `domovoy/data/db.sqlite3` of a checkout at the commit prod runs.
-2. Dump it (`dumpdata`, as in DATABASE.md), and run the length check.
-3. Load it into the **dev** branch with the **dev direct** URL (DATABASE.md
-   step 4). The `migrate` there is a no-op if a deploy already ran it. Load
-   before you create any users on dev. If you already created some, reset the
-   branch first (*Neon → Branches → dev → Reset from parent* while `production` is
-   still empty), then re-run the `dev` workflow so the migrate job recreates
-   the schema.
-4. Verify the row counts, then log in at the dev site. Session keys live in
-   each browser's localStorage per origin, so expect to log in again.
+Dev then holds real household data, so treat it accordingly.
 
-The trial copy holds real household data, so treat the dev site accordingly.
+## DNS
 
-## Cutover runbook (VPS → GCP)
-
-Prerequisite: both GCP environments (dev and prod) have been tested. Do this in a quiet window,
-because the app is read-only/offline for the duration.
-
-**DNS.** `tdn.sh` is hosted in Cloud DNS: zone `tdn-sh` in the project
-`tdnsh-dns`. It has its own project because the zone also holds the domain's
-email records (ImprovMX, MailerSend). It moved from DigitalOcean on
-2026-11-25 with identical records, and DigitalOcean's copy can be deleted from
-2026-11-27. The commands below use this helper (bash or zsh):
+`tdn.sh` is hosted in Cloud DNS: zone `tdn-sh` in the project `tdnsh-dns`. It
+has its own project because the zone also holds the domain's email records
+(ImprovMX, MailerSend). The commands below use this helper (bash or zsh):
 
 ```sh
 dns() { gcloud dns record-sets "$@" --zone=tdn-sh --project=tdnsh-dns; }
+dns list
 ```
 
-`domovoy` and `dom-dev` have no records of their own. They resolve through
-the wildcard `*.tdn.sh`, which points at the VPS. A wildcard only answers for
-names that don't exist in the zone, and adding *any* record at or below
-`domovoy.tdn.sh` makes that name exist: Firebase's TXT record, or
-`_acme-challenge.domovoy`. An A lookup for it would then return nothing, and
-the VPS site would go offline before the switch. So step 1 gives both
-hostnames explicit A records first.
+The app's records:
 
-**A day before**
+| Name | Type | Value |
+| --- | --- | --- |
+| `domovoy.tdn.sh` | CNAME | `domovoy-tdnsh.web.app.` |
+| `dom-dev.tdn.sh` | CNAME | `domovoy-tdnsh-dev.web.app.` |
+| `_acme-challenge.domovoy.tdn.sh`, `_acme-challenge.dom-dev.tdn.sh` | TXT | Firebase's certificate challenge (keep them) |
 
-1. **Pin the hostnames to the VPS** with explicit A records and a 300s TTL,
-   so the switch and any rollback take effect within minutes:
+The zone also has a wildcard `*.tdn.sh`. A wildcard only answers for names
+that don't exist in the zone, and adding *any* record at or below a name
+makes it exist: a TXT record there, or an `_acme-challenge.<name>` record.
+Before adding such records for a name that currently resolves through the
+wildcard, give it an explicit record first, or its address lookups will
+return nothing.
 
-   ```sh
-   VPS_IP=$(dig +short A domovoy.tdn.sh @ns-cloud-d1.googledomains.com)   # the wildcard's answer
-   dns create domovoy.tdn.sh. --type=A --ttl=300 --rrdatas="$VPS_IP"
-   dns create dom-dev.tdn.sh. --type=A --ttl=300 --rrdatas="$VPS_IP"
-   ```
+To put a site on a new custom domain, add it in *Firebase console → Hosting
+→ (site) → Add custom domain* (or the Hosting API's `customDomains`), then
+create the records it asks for. Firebase asks for a CNAME to `<site>.web.app`
+plus an `_acme-challenge` TXT record. Add the domain to that environment's
+`GCP_<ENV>_ALLOWED_HOSTS` and `GCP_<ENV>_CSRF_TRUSTED_ORIGINS`, and set
+`GCP_<ENV>_FRONTEND_ROOT` if login links should use it. Then redeploy.
 
-   Both sites keep working, since the IP is unchanged. Note `VPS_IP` for
-   rollback.
-2. Add the custom domains in *Firebase console → Hosting → (site) → Add custom
-   domain*: `domovoy.tdn.sh` on the prod site, `dom-dev.tdn.sh` on the dev site.
-   Firebase then shows the exact records to create. Add **only** these, after
-   step 1, and leave every other record as it is:
-   - the ownership **TXT** record Firebase shows (on `domovoy` / `dom-dev`),
-     and
-   - the `_acme-challenge.domovoy` / `_acme-challenge.dom-dev` record it shows
-     for the certificate, if offered.
+## Cutover from the VPS (done 2026-11-25)
 
-   ```sh
-   dns create domovoy.tdn.sh. --type=TXT --ttl=300 --rrdatas='"<value Firebase shows>"'
-   dns create _acme-challenge.domovoy.tdn.sh. --type=<type Firebase shows> --ttl=300 --rrdatas='<value>'
-   ```
+Until 2026-11-25 the app ran on a single VPS (Docker Compose + nginx +
+SQLite, deployed over SSH). The move, kept here for reference:
 
-   Don't change the A records yet. Use Firebase's values, not examples from
-   these docs. Then check that `dig +short A domovoy.tdn.sh` still returns
-   `VPS_IP`.
-3. Add the custom origin to the GitHub variables and redeploy (re-run the
-   workflow):
-   - `GCP_PROD_CSRF_TRUSTED_ORIGINS` += `"https://domovoy.tdn.sh"`, and
-     `GCP_DEV_CSRF_TRUSTED_ORIGINS` += `"https://dom-dev.tdn.sh"`
-   - `GCP_PROD_ALLOWED_HOSTS` += `"domovoy.tdn.sh"`, and
-     `GCP_DEV_ALLOWED_HOSTS` += `"dom-dev.tdn.sh"`
-   - leave `GCP_<ENV>_FRONTEND_ROOT` on web.app until the switch.
-4. **Moving sessions over (optional).** Skip this if it's fine for everyone
-   to log in again after the switch. Sessions last 14 days from login anyway.
-   Imported sessions are signed with the VPS's Django key, and the SPA keeps
-   its session key per origin, which `domovoy.tdn.sh` stays. To keep them,
-   copy the running VPS app's key into prod's `-secret-key-fallbacks` (it is
-   never printed), then redeploy prod (re-run the latest `main` workflow):
+1. **DNS first, on its own.** `tdn.sh` moved from DigitalOcean to Cloud DNS
+   with identical records, checked name by name against both providers'
+   nameservers before the nameservers changed at the registrar (Namecheap).
+2. **Prep, without downtime.**
+   - `domovoy.tdn.sh` got an explicit A record to the VPS with a 300s TTL. It
+     had resolved through the wildcard (see "DNS").
+   - The custom domain was added to the prod Hosting site, and its
+     `_acme-challenge` TXT record created.
+   - The domain was added to prod's allowed hosts and CSRF origins, and prod
+     redeployed.
+3. **Freeze and move** (about 25 minutes of downtime):
+   1. Stopped the VPS container.
+   2. Took an SQLite snapshot, then ran `dumpdata` and the length check
+      ([DATABASE.md](DATABASE.md)).
+   3. Ran `loaddata` into the empty `production` branch, using the direct
+      URL, and compared row counts and ID sequences.
+   4. Logged in at the `web.app` URL.
+4. **Switch.** One Cloud DNS transaction replaced the A record with the
+   CNAME. Firebase confirmed ownership and issued its certificate within
+   about three minutes. Then `GCP_PROD_FRONTEND_ROOT` was set to the domain,
+   and prod redeployed. `dom-dev.tdn.sh` followed the same way, without data.
 
-   ```sh
-   ssh <vps> 'docker exec main_domovoy_1 python manage.py shell -c "import sys; from django.conf import settings; sys.stdout.write(settings.SECRET_KEY)"' \
-     | python3 -c 'import json, sys; sys.stdout.write(json.dumps([sys.stdin.read()]))' \
-     | gcloud secrets versions add domovoy-prod-secret-key-fallbacks --project=domovoy-tdnsh --data-file=-
-   ```
+Lessons:
+- Firebase wanted a CNAME, not A records plus an ownership TXT, and wouldn't
+  confirm ownership (or finish the certificate) until the CNAME was live.
+- `loaddata` from a laptop took 21 minutes for about 6,000 rows: it makes
+  several round trips per row at about 60 ms each. Running it inside GCP
+  (Cloud Shell, or a Cloud Run job) would be much faster.
+- Imported sessions didn't survive, because GCP has its own Django key, so
+  everyone logged in again. `domovoy_server_secret_key_fallbacks` can carry
+  sessions across a key change: see `security/session_key.py`.
+- Local DNS caches (macOS's `mDNSResponder`, browsers) kept pointing at the
+  VPS for a while. `sudo dscacheutil -flushcache; sudo killall -HUP
+  mDNSResponder` fixes it on a Mac.
 
-   On first use, each old session is re-signed with the GCP key under the
-   same session key (`security/session_key.py`). Django's own fallback
-   handling would issue a new session key instead, which the SPA never
-   learns, so it would log people out.
-
-**Cutover (prod)**
-
-1. **Freeze the VPS.** Don't merge to `main` during the window, because the
-   VPS deploy job would restart the container. On the VPS, run
-   `cd /opt/applications/domovoy/main && docker-compose stop`.
-2. **Fresh dump** of `/opt/applications/domovoy/main/data/db.sqlite3`, as in
-   DATABASE.md steps 1–3.
-3. **Load into Neon `production`** with the **prod direct** URL (DATABASE.md step 4).
-   The database must hold only the schema created by the migrate job. If you
-   created anything there while testing, restore the branch to a point before
-   that (*Neon → Branches → production → Restore*).
-4. **Verify** the row counts (DATABASE.md step 5), then log in at
-   `https://domovoy-tdnsh.web.app` and check the job list and stats.
-5. **Switch DNS.** Replace the `domovoy` A record's VPS IP with the
-   address(es) Firebase shows for `domovoy.tdn.sh`. If it also shows AAAA
-   records, create those too:
-
-   ```sh
-   dns update domovoy.tdn.sh. --type=A --ttl=300 --rrdatas=<Firebase IP>[,<Firebase IP>]
-   ```
-6. Wait until Firebase shows the domain as *Connected* and serves a valid
-   certificate:
-   `curl -sI https://domovoy.tdn.sh/ | head -1`.
-7. Set `GCP_PROD_FRONTEND_ROOT=https://domovoy.tdn.sh/` and
-   redeploy, so new login links use the custom domain.
-8. Repeat steps 5–7 for `dom-dev.tdn.sh` (`GCP_DEV_*`). There's no data to move
-   unless you want it.
-
-**After the cutover**, open a follow-up PR that removes the VPS jobs
-(`build-frontend`, `build-api`), the `deploy/docker-compose.yml` and
-`deploy/site.conf` templates, and the `SSH_*`, `DOCKERHUB_*` and
-`ENV_BACKEND_*` GitHub secrets. Until then, every push to `main` also restarts
-the VPS container. That is harmless, because no DNS points at it, but it is
-wasted work. Keep the VPS SQLite file and the dump until GCP has run for a
-while.
-
-If you copied the VPS key in "Moving sessions over", retire it a few weeks
-after the cutover: add `[]` as a new version of
-`domovoy-prod-secret-key-fallbacks`, destroy the old version, and redeploy.
-Only sessions that haven't been used since the cutover are logged out.
-
-Before the VPS is shut down, decide where the apex `tdn.sh`, `www` and the
-wildcard `*.tdn.sh` should point. They still resolve to the VPS. Once things
-are stable, the `domovoy` / `dom-dev` TTLs can go back up to 3600s.
+The VPS was stopped, not deleted. Its SQLite file is the pre-cutover backup.
+Before shutting it down for good, decide where `tdn.sh`, `www` and the
+wildcard should point; they still resolve to it.
 
 ## Rollback
 
-- **Before DNS changes**, there is nothing to roll back. Restart the VPS
-  container (`docker-compose start`).
-- **After the DNS switch**, point the `domovoy` A record back at the VPS
-  (`dns update domovoy.tdn.sh. --type=A --ttl=300 --rrdatas="$VPS_IP"`, and
-  delete any AAAA record you added) and start the VPS container. Don't delete
-  the A record: the name still exists because of Firebase's TXT record, so
-  the wildcard wouldn't answer for it. Any writes made on GCP since the cutover exist
-  only in Neon. Either accept losing them, or dump them from Neon (`dumpdata`
-  against the direct URL) and reconcile them by hand. The low TTL makes the
-  switch back take effect within minutes.
-- **A bad app deploy on GCP**: in *Cloud Run → service → Revisions*, route 100%
+- **A bad app deploy**: in *Cloud Run → service → Revisions*, route 100%
   of traffic to the previous revision, or redeploy an earlier image with
   `gcloud run deploy domovoy-prod --region=europe-west2 --image=<earlier digest>`.
   The previous 10 images are retained. Migrations don't roll back automatically.
@@ -474,7 +405,7 @@ admins by email.
   - admin flash messages use session storage too.
 
   These come from `domovoy_session_cookie_name` / `domovoy_csrf_use_sessions`.
-  The defaults (`sessionid` / `False`) leave the VPS unchanged.
+  The defaults (`sessionid` / `False`) keep local development unchanged.
 - **Host vs Origin.** Behind the rewrite, `Host` is expected to be the run.app
   hostname, with the browser's `Origin` being the web.app or custom domain.
   `GCP_<ENV>_ALLOWED_HOSTS` lists both run.app forms plus the Firebase hostnames,
