@@ -11,7 +11,7 @@ is today**.
 cd domovoy_app
 nvm use 22                 # Node 22
 npm install
-npm run domovoy-types      # regenerate the typed API client (backend must be running)
+npm run domovoy-types      # regenerate the typed API client (no server needed)
 npm run dev                # Vite dev server
 ```
 
@@ -23,7 +23,8 @@ Other scripts: `npm run build` (type-check + production build), `npm run lint`
 The API layer lives in `src/services/domovoy/`:
 
 - **`schema.d.ts`** — **generated** from the backend's OpenAPI document by
-  `npm run domovoy-types` (which hits `http://127.0.0.1:8000/api/openapi.json`).
+  `npm run domovoy-types`, which exports the schema straight from Django
+  (`scripts/generate-api-types.sh`; CI runs it too and fails if it's stale).
   Do not edit by hand; regenerate after any backend API change.
 - **`index.ts`** — creates an [`openapi-fetch`](https://openapi-ts.dev/) `client`
   typed against `schema.d.ts`, choosing the API root from the current hostname

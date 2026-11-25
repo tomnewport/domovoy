@@ -15,13 +15,15 @@ Requires **Node 22**. The backend should be running first (see the
 ```sh
 nvm use 22
 npm install
-npm run domovoy-types   # generate the typed API client from the running backend
+npm run domovoy-types   # generate the typed API client (no server needed)
 npm run dev             # start the Vite dev server
 ```
 
-Re-run `npm run domovoy-types` whenever the backend API schema changes — it pulls
-`http://127.0.0.1:8000/api/openapi.json` and regenerates
-`src/services/domovoy/schema.d.ts` (do not edit that file by hand).
+Re-run `npm run domovoy-types` whenever the backend API schema changes. It runs
+`scripts/generate-api-types.sh`, which exports the OpenAPI schema straight from
+Django (using `domovoy/.env`, no server needed) and regenerates
+`src/services/domovoy/schema.d.ts` (do not edit that file by hand). CI fails if
+the committed file is stale.
 
 ## Scripts
 
