@@ -1,3 +1,5 @@
+import { trackedFetch } from './activity'
+
 export function getHeaders(): Headers {
   const sessionId = window.localStorage.getItem('x-session-key')
   return new Headers({
@@ -28,7 +30,7 @@ export async function apiFetch<ResponseData, Request = void>(
     config.body = JSON.stringify(data)
     headers.set('Content-Type', 'application/json')
   }
-  const response = await fetch(`${apiRoot}${endpoint}`, config)
+  const response = await trackedFetch(`${apiRoot}${endpoint}`, config)
   let responseData = null
   try {
     responseData = await response.json()

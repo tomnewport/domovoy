@@ -1,28 +1,19 @@
 <script setup lang="ts">
-import type { components } from '@/services/domovoy/schema.d.ts'
 import { useHomesStore } from '@/stores/homes'
-import { onMounted } from 'vue'
-import { ref } from 'vue'
-import { watch } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import EditableItem from '@/components/common/EditableItem.vue'
 import { client, getHeaders } from '@/services/domovoy'
 
 const homesStore = useHomesStore()
 const route = useRoute()
-const home = ref<undefined | components['schemas']['HomeSchema']>(undefined)
-
-async function findHome() {
-  await homesStore.ensureLoaded()
-  home.value = homesStore.homes?.find((home) => home.id?.toString() === route.params.homeId)
-}
-
-watch(route, () => {
-  findHome()
-})
+// Reactive, so a cached home shows at once and updates when the list refreshes.
+const home = computed(() =>
+  homesStore.homes?.find((home) => home.id?.toString() === route.params.homeId)
+)
 
 onMounted(() => {
-  findHome()
+  homesStore.ensureLoaded()
 })
 
 async function setName(name: string) {
@@ -34,7 +25,6 @@ async function setName(name: string) {
     headers: getHeaders()
   })
   await homesStore.reloadHomes()
-  findHome()
 }
 
 async function setDescription(description: string) {
@@ -46,13 +36,12 @@ async function setDescription(description: string) {
     headers: getHeaders()
   })
   await homesStore.reloadHomes()
-  findHome()
 }
 </script>
 <template>
   <template v-if="home">
     <v-toolbar color="secondary" app fixed class="fixed-bar">
-      <v-btn icon to="/homes">
+      <v-btn icon to="/homes" aria-label="Back to homes">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <v-toolbar-title>{{ home.name }}</v-toolbar-title>
@@ -65,6 +54,18 @@ async function setDescription(description: string) {
         :onChange="setDescription"
       />
       <v-btn :to="`/homes/${route.params.homeId}/jobs`">Edit Jobs</v-btn>
+    </v-container>
+  </template>
+  <template v-else>
+    <v-toolbar color="secondary" app fixed class="fixed-bar">
+      <v-btn icon to="/homes" aria-label="Back to homes">
+        <v-icon>mdi-arrow-left</v-icon>
+      </v-btn>
+      <v-toolbar-title v-if="homesStore.initialized">Home not found</v-toolbar-title>
+      <v-toolbar-title v-else><span class="dmv-placeholder"></span></v-toolbar-title>
+    </v-toolbar>
+    <v-container v-if="!homesStore.initialized" aria-hidden="true">
+      <v-skeleton-loader type="text, text, button" color="transparent" />
     </v-container>
   </template>
 </template>

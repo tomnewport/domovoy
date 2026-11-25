@@ -11,5 +11,6 @@ const content = computed(
 )
 </script>
 <template>
-  {{ content }}
+  <span v-if="!homesStore.homes" class="dmv-placeholder" aria-label="Loading"></span>
+  <template v-else>{{ content }}</template>
 </template>

@@ -26,3 +26,35 @@
     box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
   }
 }
+
+/* A text-sized shimmer that holds a value's place while it loads. */
+.dmv-placeholder {
+  display: inline-block;
+  width: 4.5em;
+  height: 0.8em;
+  vertical-align: middle;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-on-surface), 0.08) 25%,
+    rgba(var(--v-theme-on-surface), 0.18) 50%,
+    rgba(var(--v-theme-on-surface), 0.08) 75%
+  );
+  background-size: 200% 100%;
+  animation: dmv-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes dmv-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dmv-placeholder {
+    animation: none;
+  }
+}
