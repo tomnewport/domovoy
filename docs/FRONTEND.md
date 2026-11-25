@@ -90,7 +90,8 @@ Grouped by domain:
   person (Profile) or one home (with a chip per member to narrow it).
 - **`regular-jobs/`** — the largest group: `TodoList` (Yours, Up for grabs,
   then folded Coming up and Not scheduled; or one list by date) /
-  `TodoItem` (with a ✓ to mark a job done from the list),
+  `TodoItem` (a circle to tick a job off, its name, when and whose, and
+  its points; the rest is on the job's card),
   `JobEditor` / `CreateRegularJob`, `RulesEditor` (+ `RuleDelayEditor`,
   `RuleCalendarEditor`), `CompleteJobCard`, `CongratulateCard` (mounted in
   `App.vue`), `JobAssignerResult`, `InstanceViewer`,

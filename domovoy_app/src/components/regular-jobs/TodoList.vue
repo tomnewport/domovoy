@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRegularJobStore, type RegularJobDefinition } from '@/stores/regular-job'
-import { useHomesStore } from '@/stores/homes'
 import CompleteJobCard from '@/components/regular-jobs/CompleteJobCard.vue'
 import TodoItem from '@/components/regular-jobs/TodoItem.vue'
 import { computed, ref } from 'vue'
@@ -17,7 +16,6 @@ const sortType = ref<'priority' | 'due' | 'assigned'>('priority')
 
 const you = useCurrentUser()
 const jobStore = useRegularJobStore()
-const homesStore = useHomesStore()
 
 interface Classified {
   job: RegularJobDefinition
@@ -92,7 +90,17 @@ const flat = computed(() => {
 const searching = computed(() => !!searchTerm.value?.trim())
 const showLater = ref(false)
 const showUnscheduled = ref(false)
-const showHome = computed(() => (homesStore.homes?.length ?? 0) > 1)
+// Search and sort live in the toolbar; the search field opens under it.
+const searchOpen = ref(false)
+function toggleSearch() {
+  searchOpen.value = !searchOpen.value
+  if (!searchOpen.value) searchTerm.value = null
+}
+const SORTS = [
+  { value: 'priority', title: 'What to do now' },
+  { value: 'due', title: 'Due date' },
+  { value: 'assigned', title: 'Recently assigned' }
+] as const
 
 const selected = ref<null | RegularJobDefinition>(null)
 const open = ref<boolean>(false)
@@ -102,7 +110,37 @@ function openCard(job: RegularJobDefinition) {
 }
 </script>
 <template>
-  <v-toolbar app color="secondary" fixed class="fixed-bar" title="Tasks" />
+  <v-toolbar app color="secondary" fixed class="fixed-bar" title="Tasks">
+    <v-btn
+      icon
+      :aria-label="searchOpen ? 'Close search' : 'Search jobs'"
+      :aria-pressed="searchOpen"
+      @click="toggleSearch"
+    >
+      <v-icon :icon="searchOpen ? 'mdi-close' : 'mdi-magnify'" />
+    </v-btn>
+    <v-menu>
+      <template #activator="{ props }">
+        <v-btn v-bind="props" icon aria-label="Sort tasks">
+          <v-icon icon="mdi-sort" />
+        </v-btn>
+      </template>
+      <v-list density="comfortable" min-width="220">
+        <v-list-subheader>Sort by</v-list-subheader>
+        <v-list-item
+          v-for="sort in SORTS"
+          :key="sort.value"
+          :active="sortType === sort.value"
+          :title="sort.title"
+          @click="sortType = sort.value"
+        >
+          <template #append>
+            <v-icon v-if="sortType === sort.value" icon="mdi-check" size="18" />
+          </template>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+  </v-toolbar>
   <JobEditor back-link="/tasks" />
   <v-dialog v-model="open">
     <CompleteJobCard
@@ -117,10 +155,10 @@ function openCard(job: RegularJobDefinition) {
     />
   </v-dialog>
 
-  <div class="todo px-4 pt-3">
+  <div v-if="searchOpen" class="px-4 pt-3">
     <v-text-field
       v-model="searchTerm"
-      clearable
+      autofocus
       variant="outlined"
       density="comfortable"
       prepend-inner-icon="mdi-magnify"
@@ -128,18 +166,11 @@ function openCard(job: RegularJobDefinition) {
       aria-label="Search jobs"
       hide-details
       single-line
+      @keydown.escape="toggleSearch"
     />
-    <v-chip-group
-      v-model="sortType"
-      mandatory
-      selected-class="text-primary"
-      class="mt-1"
-      aria-label="Sort tasks by"
-    >
-      <v-chip value="priority" size="small" filter variant="outlined">What to do now</v-chip>
-      <v-chip value="due" size="small" filter variant="outlined">Due date</v-chip>
-      <v-chip value="assigned" size="small" filter variant="outlined">Recently assigned</v-chip>
-    </v-chip-group>
+  </div>
+  <div v-if="sortType !== 'priority'" class="px-4 pt-2 text-body-2 text-medium-emphasis">
+    Sorted by {{ SORTS.find((s) => s.value === sortType)?.title.toLowerCase() }}
   </div>
 
   <v-list lines="two" class="pa-0 todo-list" bg-color="transparent">
@@ -177,7 +208,6 @@ function openCard(job: RegularJobDefinition) {
           :job="c.job"
           :classification="c.classification"
           :mine="c.mine"
-          :show-home="showHome"
           :on-open="() => openCard(c.job)"
         />
         <div
@@ -200,7 +230,6 @@ function openCard(job: RegularJobDefinition) {
           :job="c.job"
           :classification="c.classification"
           :mine="c.mine"
-          :show-home="showHome"
           :on-open="() => openCard(c.job)"
         />
       </template>
@@ -230,7 +259,6 @@ function openCard(job: RegularJobDefinition) {
             :job="c.job"
             :classification="c.classification"
             :mine="c.mine"
-            :show-home="showHome"
             :on-open="() => openCard(c.job)"
           />
         </template>
@@ -261,7 +289,6 @@ function openCard(job: RegularJobDefinition) {
             :job="c.job"
             :classification="c.classification"
             :mine="c.mine"
-            :show-home="showHome"
             :on-open="() => openCard(c.job)"
           />
         </template>
@@ -275,7 +302,6 @@ function openCard(job: RegularJobDefinition) {
         :job="c.job"
         :classification="c.classification"
         :mine="c.mine"
-        :show-home="showHome"
         :show-date="sortType === 'assigned' ? 'assigned' : 'due'"
         :on-open="() => openCard(c.job)"
       />
