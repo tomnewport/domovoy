@@ -62,7 +62,7 @@ History-mode routes. Most carry a `meta.bottomNav` index for the bottom menu.
 | `/homes/:homeId` | `HomeDetailView` | A single home |
 | `/homes/:homeId/jobs` | `HomeJobsView` | Jobs in a home |
 | `/homes/:homeId/jobs/:jobId` | `HomeJobsView` | A single job |
-| `/profile` | `ProfileView` | Profile + holidays |
+| `/profile` | `ProfileView` | Progress, activity feed and holidays (tabs; `?tab=activity` / `?tab=holidays`) |
 | `/reports` | `TasksView` | Reports tab |
 | `/register` | `RegisterView` | Sign up |
 | `/auth_link/:emailB64/:emailCode` | `AuthLinkLogin` | Magic-link landing page |
@@ -80,7 +80,14 @@ Grouped by domain:
   `RuleCalendarEditor`), `CompleteJobCard` / `QuickCompleteJob`,
   `CongratulateCard`, `JobAssignerResult`, `InstanceViewer`,
   `RegularJobDefinitionList`.
-- **`profile/`** — `HolidayList`, `CreateHoliday`.
+- **`profile/`** — `ProgressTiles`, `HomeStandings`, `ActivityFeed`, and the
+  holiday planner (`HolidayPlanner`, `HolidayCalendar`, `HolidayForm`, with the
+  data logic in `holidays.ts`). `progress.ts` holds the period maths (points,
+  jobs, on-time rate, streak, standings).
+- **`charts/`** — `PointsRaceChart` (several members on one pair of axes, with
+  legend, crosshair tooltip and table view) and `Sparkline`. Member colours come
+  from `utils/memberColors.ts`: a fixed categorical palette, assigned by user id
+  so a person keeps their colour.
 - **`common/`** — reusable display widgets registered globally in `main.ts`:
   `UserDisplay` (`DUserDisplay`), `DateDisplay` (`DDateDisplay`),
   `HomeDisplay` (`DHomeDisplay`), `EditableItem` (`DEditableItem`).
