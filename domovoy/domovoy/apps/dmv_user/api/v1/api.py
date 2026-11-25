@@ -112,7 +112,7 @@ def register(request: HttpRequest, body: UserRegistrationRequest):
     if with_username.exists():
         raise HttpError(400, "Username already in use")
     if with_email.exists():
-        return HttpResponse(400, "Email already in use")
+        raise HttpError(400, "Email already in use")
 
     with transaction.atomic():
         new_user = User(

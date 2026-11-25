@@ -622,7 +622,7 @@ export interface components {
             /** Score */
             score: number;
             /** Rolls */
-            rolls: (1 | 2 | 3 | 4 | 5 | 6)[];
+            rolls: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
             /** Tiebreak */
             tiebreak: number;
             /**
