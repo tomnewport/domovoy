@@ -15,6 +15,7 @@ from domovoy.apps.regular_job.api.v1.schemas import (
     CreateRegularJobDefinitionRequest,
     CreateRegularJobInstanceRequest, RegularJobDefinitionEditSchema, RegularJobInstanceSchema, ClaimResponse
 )
+from domovoy.apps.dmv_home.models import Home
 from domovoy.apps.regular_job.models import RegularJobDefinition
 
 from domovoy.apps.regular_job.stats import HomeStatistics, get_statistics
@@ -71,7 +72,10 @@ def edit_regular_job_definition(
 def create_regular_job_definition(
     request: HttpRequest, home_id: int, data: CreateRegularJobDefinitionRequest
 ):
-    home = request.user.home_set.get(id=home_id)
+    try:
+        home = request.user.home_set.get(id=home_id)
+    except Home.DoesNotExist:
+        raise HttpError(404, "Home not found")
     if home.regular_jobs.count() >= 500:
         raise HttpError(403, "Job definition limit exceeded")
 

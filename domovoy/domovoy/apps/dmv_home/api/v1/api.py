@@ -1,4 +1,4 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Manager
 from django.http import HttpRequest
 from django.utils import timezone
@@ -34,13 +34,15 @@ def create_home(request: HttpRequest, data: CreateHomeRequest):
         raise HttpError(403, "Maximum number of memberships reached")
 
     try:
-        new_home = Home(name=data.name, description=data.description)
-        new_home.save()
-        new_membership = Membership(
-            user=request.user,
-            home=new_home,
-        )
-        new_membership.save()
+        # The home and its first membership are created together or not at all.
+        with transaction.atomic():
+            new_home = Home(name=data.name, description=data.description)
+            new_home.save()
+            new_membership = Membership(
+                user=request.user,
+                home=new_home,
+            )
+            new_membership.save()
     except IntegrityError:
         raise HttpError(409, "Home with that name already exists")
 

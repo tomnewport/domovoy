@@ -112,6 +112,8 @@ class RegularJobDefinition(models.Model):
         if not len(rules.rules):
             return None
         all_members = self.home.memberships.all()
+        if not all_members:  # nobody to assign
+            return None
         for assignee in all_members:
             n_dice = max(
                 min(assignee.score // self.home.d6_cost, self.home.d6_max),
@@ -202,11 +204,11 @@ class RegularJobDefinition(models.Model):
             # First off - increment the user's score. Also find the min score
             total_value = self.validate_value(value) + bonus
             all_memberships = self.home.memberships.all()
-            min_score = 10**20
             for membership in all_memberships:
                 if membership.user == user:
                     membership.score += total_value
-                min_score = min(min_score, membership.score)
+            # 0 for a home with no members, so nothing is carried over.
+            min_score = min((m.score for m in all_memberships), default=0)
 
             # Now normalise - making the lowest score 0
             for membership in all_memberships:
