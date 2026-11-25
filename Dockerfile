@@ -18,10 +18,9 @@ RUN domovoy_server_secret_key=collectstatic-placeholder \
     domovoy_frontend_root=http://unused \
     python manage.py collectstatic --noinput
 
-# TLS is terminated by the platform proxy, whose address isn't fixed (Cloud Run,
-# or the docker bridge gateway behind nginx), so trust X-Forwarded-* from any
-# peer. Override at runtime to restrict it.
+# TLS is terminated by the platform proxy (Cloud Run), whose address isn't
+# fixed, so trust X-Forwarded-* from any peer. Override at runtime to restrict it.
 ENV FORWARDED_ALLOW_IPS="*"
 
-# Cloud Run injects PORT (default 8080); docker-compose relies on the 8000 default.
+# Cloud Run injects PORT (default 8080); a local `docker run` gets 8000.
 CMD ["sh", "-c", "exec uvicorn domovoy.asgi:application --host 0.0.0.0 --port \"${PORT:-8000}\" --proxy-headers"]

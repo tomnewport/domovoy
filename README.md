@@ -106,10 +106,11 @@ Comprehensive reference docs for the current state of the app live in
 │   └── manage.py
 ├── domovoy_app/             # Vue 3 + Vuetify frontend (npm)
 │   └── src/services/domovoy # API client generated from the OpenAPI schema
-├── deploy/                  # docker-compose + nginx site config (current deploy)
+├── deploy/gcp/              # one-time GCP bootstrap script + Artifact Registry policy
+├── firebase.json           # Firebase Hosting: SPA, Cloud Run rewrites, cache headers
 ├── pyproject.toml          # backend Poetry project (with poetry.lock)
 ├── Dockerfile              # backend image
-└── .github/workflows/ci.yml # build + SSH deploy to a single VPS
+└── .github/workflows/ci.yml # checks, then deploy to Cloud Run + Firebase Hosting
 ```
 
 ---
@@ -175,27 +176,19 @@ by [`environment.py`](domovoy/domovoy/environment.py)):
 
 ## Deployment
 
-There are two deployments, run in parallel until the cutover. Both are driven by
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) on push to `main` (prod)
-or `dev`, after the `checks` job passes.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) deploys on push to
+`main` (prod, [domovoy.tdn.sh](https://domovoy.tdn.sh)) or `dev` (dev,
+[dom-dev.tdn.sh](https://dom-dev.tdn.sh)), after the `checks` job passes.
 
-**VPS (current production).** CI:
+CI builds the image into Artifact Registry and runs migrations as a Cloud Run
+job against Neon Postgres. It then deploys the API to Cloud Run (scale to zero)
+and the SPA to Firebase Hosting, which rewrites `/api`, `/api-static` and
+`/krimba` to Cloud Run. Auth uses Workload Identity Federation, secrets live in
+Secret Manager, and config lives in repository-level Actions variables. See
+[`docs/DEPLOY_GCP.md`](docs/DEPLOY_GCP.md) for setup, operations and rollback.
 
-1. builds the Vue frontend and `scp`s the static files to a single VPS,
-2. builds and pushes the backend Docker image to Docker Hub,
-3. templates a `docker-compose.yml` + nginx site config and `scp`s them to the VPS,
-4. SSHes in to `docker-compose pull && up -d` and run migrations.
-
-This path is tied to one hand-managed VM, an SQLite file on a volume, and
-secrets passed as env blobs.
-
-**GCP (being trialled).** CI builds the image into Artifact Registry and runs
-migrations as a Cloud Run job against Neon Postgres. It then deploys the API to
-Cloud Run (scale to zero) and the SPA to Firebase Hosting, which rewrites
-`/api`, `/api-static` and `/krimba` to Cloud Run. Auth uses Workload Identity
-Federation, secrets live in Secret Manager, and config lives in repository-level
-Actions variables. `main` deploys prod and `dev` deploys dev. See [`docs/DEPLOY_GCP.md`](docs/DEPLOY_GCP.md)
-for setup, the cutover runbook and rollback.
+Until 2026-11-25 the app ran on a single VPS (Docker Compose, nginx, SQLite).
+The move is recorded in DEPLOY_GCP.md under "Cutover from the VPS".
 
 ---
 
