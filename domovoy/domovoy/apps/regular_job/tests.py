@@ -740,3 +740,85 @@ class ClaimOccurrenceTests(TestCase):
         response = self.snooze(self.seen())
         self.assertEqual(response.status_code, 200, response.content[:300])
         self.assertEqual(response.json()["next_assigned_date"], self.seen())
+
+
+class UpkeepTests(TestCase):
+    """The ideal points per week, and points actually done without bonuses."""
+
+    START = date(2026, 1, 5)  # a Monday
+
+    def rate(self, *rules):
+        from domovoy.apps.regular_job.upkeep import occurrences_per_week
+
+        return occurrences_per_week(Ruleset(rules=list(rules)), start=self.START)
+
+    def test_rates_from_rules(self):
+        weekday = lambda *days: RuleCalendar(query=CalendarQuery.WEEKDAY_NAME, match=list(days))  # noqa: E731
+        self.assertEqual(self.rate(RuleDelay(days=1)), 7)
+        self.assertEqual(self.rate(RuleDelay(weeks=1)), 1)
+        self.assertEqual(self.rate(RuleDelay(weeks=2)), 0.5)
+        self.assertAlmostEqual(self.rate(RuleDelay(months=1)), 12 / 52, places=2)
+        self.assertEqual(self.rate(weekday("Monday")), 1)
+        self.assertAlmostEqual(self.rate(weekday("Saturday", "Sunday")), 2, places=1)
+        # At least 3 days apart, and only at weekends: Sat, then the next Sat.
+        self.assertEqual(self.rate(RuleDelay(days=3), weekday("Saturday", "Sunday")), 1)
+        never = RuleCalendar(query=CalendarQuery.MONTH_AND_DAY, match=["02-30"])
+        self.assertEqual(self.rate(never), 0)
+        self.assertEqual(self.rate(), 0)
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice, cls.bob = make_user("alice"), make_user("bob")
+        cls.home = Home.objects.create(name="Flat")
+        cls.other = Home.objects.create(name="Elsewhere")
+        Membership.objects.create(user=cls.alice, home=cls.home)
+        Membership.objects.create(user=cls.bob, home=cls.other)
+
+        def job(home, name, rules, value):
+            return RegularJobDefinition.objects.create(
+                home=home, name=name, value_min=value, value_max=value, value_default=value,
+                rules=Ruleset(rules=rules).model_dump(mode="json"),
+            )
+
+        cls.daily = job(cls.home, "Feed the cat", [RuleDelay(days=1)], 2)  # 14 a week
+        cls.weekly = job(cls.home, "Bins", [RuleDelay(weeks=1)], 5)  # 5 a week
+        job(cls.home, "Unscheduled", [], 9)  # no rules: not part of the ideal
+        job(cls.other, "Not yours", [RuleDelay(days=1)], 50)
+        now = timezone.now()
+        RegularJobInstance.objects.create(
+            job=cls.weekly, value=8, bonus=3, completed_by=cls.alice, completed_at=now
+        )
+        RegularJobInstance.objects.create(
+            job=cls.daily, value=2, completed_by=cls.alice, completed_at=now - timedelta(days=1)
+        )
+
+    def test_ideal_and_actual(self):
+        response = ApiClient(self.alice).get(
+            f"/api/regular_jobs/v1/upkeep?home_id={self.home.id}&days=7"
+        )
+        self.assertEqual(response.status_code, 200, response.content[:300])
+        upkeep = response.json()
+        self.assertEqual(upkeep["ideal_per_week"], 19)
+        self.assertEqual([j["name"] for j in upkeep["jobs"]], ["Feed the cat", "Bins"])
+        self.assertEqual(len(upkeep["daily_points"]), 7)
+        # Today's 8 points included a bonus of 3: only 5 count.
+        self.assertEqual(upkeep["daily_points"][-2:], [2, 5])
+
+    def test_only_your_homes(self):
+        response = ApiClient(self.alice).get(f"/api/regular_jobs/v1/upkeep?home_id={self.other.id}")
+        self.assertEqual(response.status_code, 404)
+
+    def test_claim_records_the_bonus(self):
+        job = self.weekly
+        job.next_assigned_to = self.bob  # someone else's job, overdue
+        job.next_assigned_due_date = timezone.now() - timedelta(days=3)
+        job.open_for_days = 1
+        job.save()
+        self.home.overdue_bounty = 100
+        self.home.save()
+        job.refresh_from_db()
+        expected_bonus = job.bonus
+        self.assertGreater(expected_bonus, 0)
+        job.claim(self.alice)
+        instance = job.instances.latest("completed_at")
+        self.assertEqual((instance.value, instance.bonus), (5 + expected_bonus, expected_bonus))

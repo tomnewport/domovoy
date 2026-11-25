@@ -21,6 +21,7 @@ from domovoy.apps.dmv_home.models import Home
 from domovoy.apps.regular_job.models import RegularJobDefinition, RegularJobInstance
 
 from domovoy.apps.regular_job.stats import HomeStatistics, get_statistics
+from domovoy.apps.regular_job.upkeep import HomeUpkeep, get_upkeep
 
 regular_jobs_v1_router = Router(tags=["Regular Jobs"], auth=[SessionHeader()])
 
@@ -245,3 +246,20 @@ def list_completions(
         )
         for completion in completions.order_by("-completed_at", "-id")[:limit]
     ]
+
+
+@regular_jobs_v1_router.get("/upkeep", response={200: HomeUpkeep})
+def home_upkeep(request: HttpRequest, home_id: int, days: int = Query(56, ge=7, le=365)):
+    """How well one of your homes is keeping up with its jobs.
+
+    `ideal_per_week`: the points a week of every job done on schedule would
+    earn (each job's occurrences per week, from its rules over a year, times
+    its default value). `daily_points`: points actually earned each day of
+    the last `days`, without overdue bonuses. `jobs`: each job's share of the
+    ideal.
+    """
+    try:
+        home = request.user.home_set.get(id=home_id)
+    except Home.DoesNotExist:
+        raise HttpError(404, "Home not found")
+    return get_upkeep(home, days)

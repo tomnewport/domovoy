@@ -286,6 +286,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/regular_jobs/v1/upkeep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Home Upkeep
+         * @description How well one of your homes is keeping up with its jobs.
+         *
+         *     `ideal_per_week`: the points a week of every job done on schedule would
+         *     earn (each job's occurrences per week, from its rules over a year, times
+         *     its default value). `daily_points`: points actually earned each day of
+         *     the last `days`, without overdue bonuses. `jobs`: each job's share of the
+         *     ideal.
+         */
+        get: operations["domovoy_apps_regular_job_api_v1_api_home_upkeep"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -758,6 +784,32 @@ export interface components {
             due_at: string | null;
             /** On Time */
             on_time: boolean | null;
+        };
+        /** HomeUpkeep */
+        HomeUpkeep: {
+            /** Home Id */
+            home_id: number;
+            /** Ideal Per Week */
+            ideal_per_week: number;
+            /** Dates */
+            dates: string[];
+            /** Daily Points */
+            daily_points: number[];
+            /** Jobs */
+            jobs: components["schemas"]["UpkeepJob"][];
+        };
+        /** UpkeepJob */
+        UpkeepJob: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Per Week */
+            per_week: number;
+            /** Value */
+            value: number;
+            /** Points Per Week */
+            points_per_week: number;
         };
     };
     responses: never;
@@ -1261,6 +1313,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobCompletionSchema"][];
+                };
+            };
+        };
+    };
+    domovoy_apps_regular_job_api_v1_api_home_upkeep: {
+        parameters: {
+            query: {
+                home_id: number;
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeUpkeep"];
                 };
             };
         };

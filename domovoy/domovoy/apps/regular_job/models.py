@@ -252,6 +252,7 @@ class RegularJobDefinition(models.Model):
             instance = RegularJobInstance(
                 job=self,
                 value=total_value,
+                bonus=bonus,
                 completed_by=user,
                 assigned_at=self.next_assigned_date,
                 can_start_at=self.next_assigned_start_date,
@@ -313,7 +314,12 @@ class RegularJobInstance(models.Model):
     job = models.ForeignKey(
         to=RegularJobDefinition, on_delete=models.CASCADE, related_name="instances"
     )
+    # Points awarded, including any overdue bonus.
     value = models.PositiveSmallIntegerField()
+    # The overdue bonus part of `value`, so `value - bonus` is the job's own
+    # points (what upkeep compares against). Recorded from 0002; earlier
+    # completions carry an estimate (see that migration).
+    bonus = models.PositiveSmallIntegerField(default=0)
     completed_by = models.ForeignKey(
         to=User, on_delete=models.PROTECT, related_name="regular_jobs"
     )

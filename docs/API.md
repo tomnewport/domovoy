@@ -209,3 +209,17 @@ The Django admin is mounted at **`/krimba/`** (not `/admin/`). All models
 (`DmvUser`, `Home`, `Membership`, `Holiday`, `RegularJobDefinition`,
 `RegularJobInstance`) are registered. It requires a staff/superuser account
 (`manage.py createsuperuser`).
+
+### `GET /upkeep` — how well a home is keeping up
+Query params `home_id` and `days` (7–365, default 56). `404` if you aren't a
+member. `200` → `HomeUpkeep`:
+- `ideal_per_week`: the points a week of every job done on schedule would earn.
+  Each job's rules are simulated over two years to get its average occurrences
+  per week (from the average gap between scheduled dates), times its
+  `value_default`. Jobs without rules count for nothing.
+- `dates` / `daily_points`: points actually earned each day, **without**
+  overdue bonuses (`value - bonus`), oldest first.
+- `jobs`: each job's `per_week`, `value` and `points_per_week`, largest first.
+
+The ideal uses today's jobs and rules, so older weeks are compared against the
+current schedule.
