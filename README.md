@@ -140,13 +140,14 @@ The API is then served at `http://127.0.0.1:8000/api/` with interactive docs at
 cd domovoy_app
 nvm use 22                     # Node 22
 npm install
-npm run domovoy-types          # regenerate the typed API client from the running backend
+npm run domovoy-types          # regenerate the typed API client (no server needed)
 npm run dev
 ```
 
-Re-run `npm run domovoy-types` whenever the backend schema changes — it pulls
-`http://127.0.0.1:8000/api/openapi.json` and regenerates
-`src/services/domovoy/schema.d.ts`.
+Re-run `npm run domovoy-types` whenever the backend schema changes. It exports
+the OpenAPI schema straight from Django (using `domovoy/.env`, no server needed)
+and regenerates `src/services/domovoy/schema.d.ts`. CI fails if the committed
+file is stale.
 
 ---
 

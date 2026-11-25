@@ -29,7 +29,7 @@ npm install
 npm run dev
 npm run build          # type-check + vite build
 npm run lint           # eslint --fix
-npm run domovoy-types  # regenerate src/services/domovoy/schema.d.ts from the running backend
+npm run domovoy-types  # regenerate src/services/domovoy/schema.d.ts (no server needed)
 ```
 
 ## Conventions & gotchas
@@ -45,7 +45,8 @@ npm run domovoy-types  # regenerate src/services/domovoy/schema.d.ts from the ru
 - The custom user model is `dmv_user.DmvUser` (`AUTH_USER_MODEL`). Always use
   `get_user_model()`.
 - Frontend types are **generated** from the backend OpenAPI schema. After any API
-  change, regenerate with `npm run domovoy-types` (backend must be running).
+  change, regenerate with `npm run domovoy-types` and commit it; CI fails if it's
+  stale. It exports the schema from Django directly, so no server is needed.
 - The Django admin lives at `/krimba/`, not `/admin/`.
 - Email login links are currently **printed to stdout** (`utils/email.py`), not
   sent. Don't assume mail is delivered in dev.

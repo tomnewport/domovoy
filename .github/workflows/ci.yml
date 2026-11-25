@@ -58,14 +58,6 @@ jobs:
         working-directory: domovoy
         run: poetry -P .. run python manage.py test
 
-      - name: Export OpenAPI schema
-        working-directory: domovoy
-        run: >-
-          poetry -P .. run python manage.py shell -c
-          "from django.core.management import call_command;
-          from ninja.management.commands.export_openapi_schema import Command;
-          call_command(Command(), output='$RUNNER_TEMP/openapi.json')"
-
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -81,12 +73,14 @@ jobs:
         working-directory: domovoy_app
         run: npm run lint:check
 
+      # Same script as `npm run domovoy-types`: exports the schema from Django
+      # (no server) and regenerates the client types.
       - name: Check generated API types are up to date
         working-directory: domovoy_app
         run: |
-          npx openapi-typescript "$RUNNER_TEMP/openapi.json" -o src/services/domovoy/schema.d.ts
+          npm run domovoy-types
           git diff --exit-code -- src/services/domovoy/schema.d.ts \
-            || { echo "::error::schema.d.ts is stale. Run 'npm run domovoy-types' against the backend and commit the result."; exit 1; }
+            || { echo "::error::schema.d.ts is stale. Run 'npm run domovoy-types' (no server needed) and commit the result."; exit 1; }
 
       - name: Type-check and build
         working-directory: domovoy_app
