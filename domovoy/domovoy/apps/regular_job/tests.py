@@ -658,3 +658,85 @@ class ActivityApiTests(TestCase):
                 f"/api/regular_jobs/v1/statistics?home_id={self.home.id}&days={days}"
             )
             self.assertEqual(response.status_code, 422, days)
+
+
+class ClaimOccurrenceTests(TestCase):
+    """A claim names the occurrence it completes, so repeating it can't count twice."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice, cls.bob = make_user("alice"), make_user("bob")
+        cls.home = Home.objects.create(name="Flat")
+        Membership.objects.create(user=cls.alice, home=cls.home)
+        Membership.objects.create(user=cls.bob, home=cls.home)
+
+    def setUp(self):
+        self.api = ApiClient(self.alice)
+        rules = Ruleset(rules=[RuleDelay(days=1)]).model_dump(mode="json")
+        self.job = RegularJobDefinition.objects.create(
+            home=self.home, name="Feed the cat", value_max=5, value_min=5, value_default=5,
+            rules=rules,
+        )
+        self.job.adjust()
+        self.job.save()
+        self.url = f"/api/regular_jobs/v1/definitions/{self.job.id}"
+
+    def seen(self):
+        """The occurrence as the client received it: the job's next_assigned_date."""
+        return self.api.get("/api/regular_jobs/v1/definitions").json()[0]["next_assigned_date"]
+
+    def claim(self, assigned_at=None):
+        body = {} if assigned_at is None else {"assigned_at": assigned_at}
+        return self.api.post_json(f"{self.url}/instances", body)
+
+    def scores(self):
+        return sorted(Membership.objects.filter(home=self.home).values_list("score", flat=True))
+
+    def test_repeating_a_claim_is_refused(self):
+        # A daily job done early is due "tomorrow" again, so the due date
+        # alone can't tell the occurrences apart; the assignment time can.
+        due_before = self.job.next_assigned_due_date
+        seen = self.seen()
+        first = self.claim(seen)
+        self.assertEqual(first.status_code, 200, first.content[:300])
+        scores_after_first = self.scores()
+
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.next_assigned_due_date, due_before)
+        repeat = self.claim(seen)
+        self.assertEqual(repeat.status_code, 409)
+        self.assertEqual(self.job.instances.count(), 1)
+        self.assertEqual(self.scores(), scores_after_first)
+
+    def test_response_has_the_job_as_it_is_now(self):
+        seen = self.seen()
+        response = self.claim(seen).json()
+        self.assertNotEqual(response["definition"]["next_assigned_date"], seen)
+        self.assertEqual(response["definition"]["next_assigned_date"], self.seen())
+
+    def test_the_next_occurrence_can_be_claimed(self):
+        self.assertEqual(self.claim(self.seen()).status_code, 200)
+        self.assertEqual(self.claim(self.seen()).status_code, 200)
+        self.assertEqual(self.job.instances.count(), 2)
+
+    def test_claim_without_a_due_date_still_works(self):
+        self.assertEqual(self.claim().status_code, 200)
+        self.assertEqual(self.claim().status_code, 200)
+        self.assertEqual(self.job.instances.count(), 2)
+
+    def snooze(self, assigned_at, days=5):
+        new_date = (timezone.now() + timedelta(days=days)).date().isoformat()
+        query = f"?new_date={new_date}&assigned_at={assigned_at.replace('+', '%2B')}"
+        return self.api.post(f"{self.url}/snooze{query}")
+
+    def test_a_stale_snooze_is_refused(self):
+        seen = self.seen()
+        self.assertEqual(self.claim(seen).status_code, 200)
+        before = self.seen()
+        self.assertEqual(self.snooze(seen).status_code, 409)
+        self.assertEqual(self.seen(), before)
+
+    def test_snooze_returns_the_job(self):
+        response = self.snooze(self.seen())
+        self.assertEqual(response.status_code, 200, response.content[:300])
+        self.assertEqual(response.json()["next_assigned_date"], self.seen())

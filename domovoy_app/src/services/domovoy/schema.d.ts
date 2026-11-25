@@ -228,7 +228,13 @@ export interface paths {
         /** Get Snooze Options */
         get: operations["domovoy_apps_regular_job_api_v1_api_get_snooze_options"];
         put?: never;
-        /** Snooze */
+        /**
+         * Snooze
+         * @description Move the current occurrence to `new_date`. With `assigned_at` (the
+         *     job's `next_assigned_date` as you saw it), refused with 409 if that
+         *     occurrence has since been dealt with, so a stale snooze can't move the
+         *     next one instead.
+         */
         post: operations["domovoy_apps_regular_job_api_v1_api_snooze"];
         delete?: never;
         options?: never;
@@ -628,6 +634,7 @@ export interface components {
             value: number;
             statistics: components["schemas"]["HomeStatistics"];
             result: components["schemas"]["RuleComputeResult"] | null;
+            definition: components["schemas"]["RegularJobDefinitionSchema"];
         };
         /** HomeStatistics */
         HomeStatistics: {
@@ -712,6 +719,8 @@ export interface components {
         CreateRegularJobInstanceRequest: {
             /** Value */
             value?: number | null;
+            /** Assigned At */
+            assigned_at?: string | null;
         };
         /** SnoozeOption */
         SnoozeOption: {
@@ -1186,6 +1195,7 @@ export interface operations {
         parameters: {
             query: {
                 new_date: string;
+                assigned_at?: string | null;
             };
             header?: never;
             path: {
@@ -1200,7 +1210,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RegularJobDefinitionSchema"];
+                };
             };
         };
     };
