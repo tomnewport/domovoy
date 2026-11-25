@@ -122,7 +122,7 @@ Comprehensive reference docs for the current state of the app live in
 ```sh
 cd domovoy
 poetry install                 # uses the root pyproject.toml + poetry.lock
-# create domovoy/.env with the variables in "Configuration" below
+cp .env.example .env           # local settings; see "Configuration" below
 poetry run python manage.py migrate
 poetry run python manage.py runserver
 poetry run python manage.py test
@@ -161,7 +161,7 @@ by [`environment.py`](domovoy/domovoy/environment.py)):
 | `domovoy_server_secret_key` | ✅ | Django `SECRET_KEY` (also used to sign hashcash nonces) |
 | `domovoy_server_secret_key_fallbacks` | | JSON list of previous secret keys (Django `SECRET_KEY_FALLBACKS`), so sessions survive a key change. Default `[]` |
 | `domovoy_django_debug` | | `true`/`false`, defaults to `false` |
-| `domovoy_allowed_hosts` | | JSON list of allowed hostnames |
+| `domovoy_allowed_hosts` | | JSON list of allowed hostnames. Default `["localhost", "127.0.0.1"]` |
 | `domovoy_allowed_cors_origins` | | JSON list of allowed CORS origins |
 | `domovoy_csrf_trusted_origins` | | JSON list of origins trusted for CSRF on unsafe requests (e.g. the admin login) when served over HTTPS behind a proxy, e.g. `["https://domovoy.tdn.sh"]`. Defaults to `[]`, which is fine for local HTTP dev |
 | `domovoy_frontend_root` | ✅ | Public base URL of the frontend (used in email links) |

@@ -116,7 +116,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Upcoming Holidays */
+        /**
+         * List Upcoming Holidays
+         * @description Your holidays that haven't ended yet, soonest first.
+         */
         get: operations["domovoy_apps_dmv_home_api_v1_api_list_upcoming_holidays"];
         put?: never;
         post?: never;

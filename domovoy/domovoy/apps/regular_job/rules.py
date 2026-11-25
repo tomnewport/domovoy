@@ -74,8 +74,14 @@ class RuleCalendar(BaseModel):
 Rule = Annotated[Union[RuleDelay, RuleCalendar], Field(discriminator="rule")]
 
 
+# How far ahead to look for a date that satisfies a job's rules: five times
+# the longest real rule (a 12-month delay). A ruleset with no match within this
+# window has none at all, e.g. a calendar rule for "02-30".
+SEARCH_HORIZON_DAYS = 5 * 366
+
+
 def generate_dates(from_date: date):
-    for increment in range(0, 365 * 100):
+    for increment in range(SEARCH_HORIZON_DAYS):
         yield from_date + timedelta(days=increment)
 
 

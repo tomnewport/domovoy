@@ -53,12 +53,23 @@ class RegularJobDefinition(models.Model):
 
     @property
     def bonus(self):
-        if self.home.overdue_bounty == 0:
+        """Extra points for completing this job when it's someone else's and overdue.
+
+        It grows with how far overdue the job is, relative to how long it was
+        open for, scaled by the home's `overdue_bounty` percentage:
+
+            value_default * (days_overdue / open_for_days) * (overdue_bounty / 100)
+
+        rounded down and capped at 10 x value_default. No bonus before the due
+        date, for jobs with no open window, or in homes with no bounty.
+        `claim()` adds it only when someone other than the assignee claims.
+        """
+        if self.home.overdue_bounty == 0 or self.open_for_days == 0:
             return 0
-        if self.open_for_days == 0:
-            return 0
-        max_bonus = self.value_default * 10
-        return min(max_bonus, int(self.value_default * (max(0, int(self.days_overdue)) / self.open_for_days) * (self.home.overdue_bounty / 100)))
+        overdue_fraction = max(0, self.days_overdue) / self.open_for_days
+        bounty_rate = self.home.overdue_bounty / 100
+        bonus = int(self.value_default * overdue_fraction * bounty_rate)
+        return min(bonus, self.value_default * 10)
 
     def snooze_options(self) -> list[SnoozeOption]:
         if not self.next_assigned_due_date:
@@ -93,25 +104,44 @@ class RegularJobDefinition(models.Model):
         return sorted(unique, key=lambda _: _.date)
 
     def assign(self, preserve_member = False, override_date: Optional[datetime.date] = None):
-        """
-        Assignees:
-           Each assignee rolls a number of D6 dice - controlled by the home's rules.
-               home.d6_cost => number of minutes to earn an extra d6
-               home.d6_min => number of dice all members get to roll
-               home.d6_max => maximum number of dice a member can have
-            Lowest score does the task
+        """Pick who does the job next, and when. Doesn't save anything.
 
-        Holidays:
-           L: Assign to whoever has the job, after back from holiday (plus random buffer)
-           M: Assign to whoever is around, if assignee is on holiday, or L if not possible
-           H: Assign to whoever is around, as close to ideal date before holiday
+        The ideal date is the first date the rules allow, counting from
+        `override_date` (default: today).
+
+        Each member rolls d6 dice: one per `home.d6_cost` points of score, at
+        least `home.d6_min` and at most `home.d6_max`. The lowest total ranks
+        first (a random tiebreak settles ties). With `preserve_member`, the
+        current assignee "rolls" a single 0 and so ranks first. A member's
+        first available date is the first date the rules allow that isn't in
+        one of their holidays.
+
+        Criticality decides what happens when holidays get in the way:
+          L (low)    The top-ranked member, on their first available date, even
+                     if that's after the ideal date.
+          M (medium) The top-ranked member who is free on the ideal date, or
+                     else whoever is free soonest.
+          H (high)   The top-ranked member who is free on the ideal date, or
+                     else the latest date between the baseline and the ideal
+                     date when anyone is free (the rules' minimum gap doesn't
+                     apply), or else the top-ranked member's first available
+                     date.
+
+        Returns None if there are no rules, no date within the search horizon
+        satisfies them, or the home has no members.
         """
         solution = RuleComputeResult()
         rules = Ruleset.model_validate(self.rules)
         baseline = override_date or timezone.now().date()
         if not len(rules.rules):
             return None
-        all_members = self.home.memberships.all()
+        solution.ideal_date = next(rules.find(baseline), None)
+        if solution.ideal_date is None:  # the rules never match
+            return None
+        # Users and holidays in two queries, whatever the number of members.
+        all_members = list(
+            self.home.memberships.select_related("user").prefetch_related("holiday_set")
+        )
         if not all_members:  # nobody to assign
             return None
         for assignee in all_members:
@@ -140,7 +170,6 @@ class RegularJobDefinition(models.Model):
         solution.participants = sorted(
             solution.participants, key=lambda _: sum(_.rolls) + _.tiebreak
         )
-        solution.ideal_date = next(rules.find(baseline))
 
         for participant in solution.participants:
             if (
@@ -189,7 +218,8 @@ class RegularJobDefinition(models.Model):
             return solution
 
     def validate_value(self, value: Optional[int] = None):
-        with_default = value or self.value_default
+        """The claimed value (the default if None), clamped to the job's range."""
+        with_default = self.value_default if value is None else value
         if with_default > self.value_max:
             return self.value_max
         if with_default < self.value_min:
