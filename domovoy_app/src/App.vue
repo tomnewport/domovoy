@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import { Toaster } from 'vue-sonner'
 import BottomMenu from '@/components/layout/BottomMenu.vue'
 import NetworkActivityBar from '@/components/layout/NetworkActivityBar.vue'
+import CongratulateCard from '@/components/regular-jobs/CongratulateCard.vue'
 
 import { useHashcashConfigStore } from '@/stores/hashcash-config'
 import { useSessionStore } from '@/stores/session'
@@ -65,6 +66,8 @@ onBeforeUnmount(() => {
     <v-main>
       <RouterView />
     </v-main>
+    <!-- App-wide: a claim's "See scores" can be opened from any page. -->
+    <CongratulateCard v-if="sessionStore.loggedIn" />
     <v-footer v-if="showBottomMenu" app class="pa-0">
       <BottomMenu />
     </v-footer>

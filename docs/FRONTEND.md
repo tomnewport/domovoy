@@ -44,6 +44,7 @@ The API layer lives in `src/services/domovoy/`:
 | `session.ts` | Current session/user; `setSessionId`, `reloadSession`, `clearSession`. Persists the key to `localStorage`. |
 | `homes.ts` | The user's homes and memberships. |
 | `regular-job.ts` | Job definitions, instances, claim/snooze actions. |
+| `quick-claim.ts` | Jobs ticked off from the task list: shown as done at once, sent after a 5-second Undo window (or straight away if the app is hidden). |
 | `hashcash-config.ts` | Caches the server's hashcash config for the PoW solver. |
 | `manager.ts` | Shared loading/error helper (`useLoadingState`). |
 
@@ -87,10 +88,12 @@ Grouped by domain:
   `UpkeepMeter`, `CreateHome`, `HomeJobList`.
 - **`activity/`** — `ActivityFeed`: completed jobs, newest first, for one
   person (Profile) or one home (with a chip per member to narrow it).
-- **`regular-jobs/`** — the largest group: `TodoList` / `TodoItem`,
+- **`regular-jobs/`** — the largest group: `TodoList` (Yours, Up for grabs,
+  then folded Coming up and Not scheduled; or one list by date) /
+  `TodoItem` (with a ✓ to mark a job done from the list),
   `JobEditor` / `CreateRegularJob`, `RulesEditor` (+ `RuleDelayEditor`,
-  `RuleCalendarEditor`), `CompleteJobCard` / `QuickCompleteJob`,
-  `CongratulateCard`, `JobAssignerResult`, `InstanceViewer`,
+  `RuleCalendarEditor`), `CompleteJobCard`, `CongratulateCard` (mounted in
+  `App.vue`), `JobAssignerResult`, `InstanceViewer`,
   `RegularJobDefinitionList`.
 - **`profile/`** — your own contribution: `ProgressTiles`, `HomeContributions`
   (your share of each home's points), `TopJobs`, and the holiday planner
