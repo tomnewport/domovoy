@@ -292,21 +292,54 @@ The trial copy holds real household data, so treat the dev site accordingly.
 Prerequisite: both GCP environments (dev and prod) have been tested. Do this in a quiet window,
 because the app is read-only/offline for the duration.
 
+**DNS.** `tdn.sh` is hosted in Cloud DNS: zone `tdn-sh` in the project
+`tdnsh-dns`. It has its own project because the zone also holds the domain's
+email records (ImprovMX, MailerSend). It moved from DigitalOcean on
+2026-11-25 with identical records, and DigitalOcean's copy can be deleted from
+2026-11-27. The commands below use this helper (bash or zsh):
+
+```sh
+dns() { gcloud dns record-sets "$@" --zone=tdn-sh --project=tdnsh-dns; }
+```
+
+`domovoy` and `dom-dev` have no records of their own. They resolve through
+the wildcard `*.tdn.sh`, which points at the VPS. A wildcard only answers for
+names that don't exist in the zone, and adding *any* record at or below
+`domovoy.tdn.sh` makes that name exist: Firebase's TXT record, or
+`_acme-challenge.domovoy`. An A lookup for it would then return nothing, and
+the VPS site would go offline before the switch. So step 1 gives both
+hostnames explicit A records first.
+
 **A day before**
 
-1. Lower the TTL of the `domovoy` and `dom-dev` records at DigitalOcean to 300s.
+1. **Pin the hostnames to the VPS** with explicit A records and a 300s TTL,
+   so the switch and any rollback take effect within minutes:
+
+   ```sh
+   VPS_IP=$(dig +short A domovoy.tdn.sh @ns-cloud-d1.googledomains.com)   # the wildcard's answer
+   dns create domovoy.tdn.sh. --type=A --ttl=300 --rrdatas="$VPS_IP"
+   dns create dom-dev.tdn.sh. --type=A --ttl=300 --rrdatas="$VPS_IP"
+   ```
+
+   Both sites keep working, since the IP is unchanged. Note `VPS_IP` for
+   rollback.
 2. Add the custom domains in *Firebase console → Hosting → (site) → Add custom
    domain*: `domovoy.tdn.sh` on the prod site, `dom-dev.tdn.sh` on the dev site.
-   Firebase then shows the exact records to create. Add **only** these at
-   DigitalOcean (*Networking → Domains → tdn.sh*), and leave every other
-   record as it is:
+   Firebase then shows the exact records to create. Add **only** these, after
+   step 1, and leave every other record as it is:
    - the ownership **TXT** record Firebase shows (on `domovoy` / `dom-dev`),
      and
    - the `_acme-challenge.domovoy` / `_acme-challenge.dom-dev` record it shows
      for the certificate, if offered.
 
-   Don't change the existing A/AAAA records yet. Use Firebase's values, not
-   examples from these docs.
+   ```sh
+   dns create domovoy.tdn.sh. --type=TXT --ttl=300 --rrdatas='"<value Firebase shows>"'
+   dns create _acme-challenge.domovoy.tdn.sh. --type=<type Firebase shows> --ttl=300 --rrdatas='<value>'
+   ```
+
+   Don't change the A records yet. Use Firebase's values, not examples from
+   these docs. Then check that `dig +short A domovoy.tdn.sh` still returns
+   `VPS_IP`.
 3. Add the custom origin to the GitHub variables and redeploy (re-run the
    workflow):
    - `GCP_PROD_CSRF_TRUSTED_ORIGINS` += `"https://domovoy.tdn.sh"`, and
@@ -314,12 +347,12 @@ because the app is read-only/offline for the duration.
    - `GCP_PROD_ALLOWED_HOSTS` += `"domovoy.tdn.sh"`, and
      `GCP_DEV_ALLOWED_HOSTS` += `"dom-dev.tdn.sh"`
    - leave `GCP_<ENV>_FRONTEND_ROOT` on web.app until the switch.
-4. **Moving sessions over.** Imported sessions are signed with the VPS's
-   Django key, and the SPA keeps its session key per origin, which
-   `domovoy.tdn.sh` stays. Unless prod accepts the old key, everyone has to
-   log in again. If prod's `-secret-key-fallbacks` doesn't already hold it,
-   copy the running VPS app's key there (it is never printed), then redeploy
-   prod (re-run the latest `main` workflow):
+4. **Moving sessions over (optional).** Skip this if it's fine for everyone
+   to log in again after the switch. Sessions last 14 days from login anyway.
+   Imported sessions are signed with the VPS's Django key, and the SPA keeps
+   its session key per origin, which `domovoy.tdn.sh` stays. To keep them,
+   copy the running VPS app's key into prod's `-secret-key-fallbacks` (it is
+   never printed), then redeploy prod (re-run the latest `main` workflow):
 
    ```sh
    ssh <vps> 'docker exec main_domovoy_1 python manage.py shell -c "import sys; from django.conf import settings; sys.stdout.write(settings.SECRET_KEY)"' \
@@ -345,9 +378,13 @@ because the app is read-only/offline for the duration.
    that (*Neon → Branches → production → Restore*).
 4. **Verify** the row counts (DATABASE.md step 5), then log in at
    `https://domovoy-tdnsh.web.app` and check the job list and stats.
-5. **Switch DNS** at DigitalOcean. Replace the existing `domovoy` A record
-   (and any AAAA record) that points at the VPS with the record(s) Firebase
-   shows for `domovoy.tdn.sh`. Keep the old VPS IP written down for rollback.
+5. **Switch DNS.** Replace the `domovoy` A record's VPS IP with the
+   address(es) Firebase shows for `domovoy.tdn.sh`. If it also shows AAAA
+   records, create those too:
+
+   ```sh
+   dns update domovoy.tdn.sh. --type=A --ttl=300 --rrdatas=<Firebase IP>[,<Firebase IP>]
+   ```
 6. Wait until Firebase shows the domain as *Connected* and serves a valid
    certificate:
    `curl -sI https://domovoy.tdn.sh/ | head -1`.
@@ -364,16 +401,24 @@ the VPS container. That is harmless, because no DNS points at it, but it is
 wasted work. Keep the VPS SQLite file and the dump until GCP has run for a
 while.
 
-A few weeks after the cutover, retire the VPS key: add `[]` as a new version
-of `domovoy-prod-secret-key-fallbacks`, destroy the old version, and redeploy.
+If you copied the VPS key in "Moving sessions over", retire it a few weeks
+after the cutover: add `[]` as a new version of
+`domovoy-prod-secret-key-fallbacks`, destroy the old version, and redeploy.
 Only sessions that haven't been used since the cutover are logged out.
+
+Before the VPS is shut down, decide where the apex `tdn.sh`, `www` and the
+wildcard `*.tdn.sh` should point. They still resolve to the VPS. Once things
+are stable, the `domovoy` / `dom-dev` TTLs can go back up to 3600s.
 
 ## Rollback
 
 - **Before DNS changes**, there is nothing to roll back. Restart the VPS
   container (`docker-compose start`).
-- **After the DNS switch**, point the `domovoy` A record back at the old VPS IP
-  and start the VPS container. Any writes made on GCP since the cutover exist
+- **After the DNS switch**, point the `domovoy` A record back at the VPS
+  (`dns update domovoy.tdn.sh. --type=A --ttl=300 --rrdatas="$VPS_IP"`, and
+  delete any AAAA record you added) and start the VPS container. Don't delete
+  the A record: the name still exists because of Firebase's TXT record, so
+  the wildcard wouldn't answer for it. Any writes made on GCP since the cutover exist
   only in Neon. Either accept losing them, or dump them from Neon (`dumpdata`
   against the direct URL) and reconcile them by hand. The low TTL makes the
   switch back take effect within minutes.
