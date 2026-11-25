@@ -148,9 +148,11 @@ pieces:
 ## Deployment
 
 [`DEPLOY_GCP.md`](DEPLOY_GCP.md) has the details. GCP project
-`domovoy-tdnsh`, `europe-west2`, with dev (`dom-dev.tdn.sh`) deployed from
-`dev` and prod (`domovoy.tdn.sh`) from `main`. On push, after the `checks`
-gate, `.github/workflows/ci.yml`:
+`domovoy-tdnsh`, `europe-west2`. A push to `main` deploys prod
+(`domovoy.tdn.sh`), resets dev's Neon branch from prod's, and deploys `main`
+to dev (`dom-dev.tdn.sh`); a manual run deploys any branch to dev. Each
+deploy (`.github/workflows/deploy-gcp.yml`, called from `ci.yml` once the
+checks pass):
 
 - builds the image into Artifact Registry and deploys it by digest;
 - runs `migrate` as a Cloud Run job against Neon Postgres (AWS eu-west-2, branches `production` and `dev`) over
@@ -166,7 +168,7 @@ GitHub holds only non-secret repository variables (no GitHub Environments,
 which private repos on GitHub Free may lack). Because Firebase forwards
 only the `__session` cookie, the GCP config renames the session cookie and keeps
 CSRF state in the session. The SPA's `x-session-key` header auth is unaffected.
-Each environment's deploys are serialised by a per-branch concurrency group.
+Each environment's deploys are serialised by a per-environment concurrency group.
 
 `tdn.sh` DNS is in Cloud DNS (project `tdnsh-dns`). Until 2026-11-25 the app
 ran on a single VPS with an SQLite file. The data moved to Neon at the cutover.

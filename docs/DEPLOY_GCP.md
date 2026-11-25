@@ -3,10 +3,15 @@
 This is Domovoy's deployment. It replaced a single VPS on 2026-11-25 (see
 "Cutover from the VPS"). There are two environments:
 
-| Environment | Git branch | Domain | Variable prefix | Cloud Run service | Firebase Hosting site | Neon branch |
+| Environment | Deployed from | Domain | Variable prefix | Cloud Run service | Firebase Hosting site | Neon branch |
 | --- | --- | --- | --- | --- | --- | --- |
-| dev | `dev` | `dom-dev.tdn.sh` | `GCP_DEV_` | `domovoy-dev` | `domovoy-tdnsh-dev.web.app` | `dev` |
-| prod | `main` | `domovoy.tdn.sh` | `GCP_PROD_` | `domovoy-prod` | `domovoy-tdnsh.web.app` | `production` |
+| prod | every push to `main` | `domovoy.tdn.sh` | `GCP_PROD_` | `domovoy-prod` | `domovoy-tdnsh.web.app` | `production` |
+| dev | `main` after each prod deploy, or any branch on demand ("Run workflow") | `dom-dev.tdn.sh` | `GCP_DEV_` | `domovoy-dev` | `domovoy-tdnsh-dev.web.app` | `dev` |
+
+There is no `dev` git branch. Dev is a scratch environment: after every prod
+deploy its database is reset to a copy of prod's and `main` is deployed to it,
+and between merges you can deploy any branch to it to try that branch out
+(see "Deploying a branch to dev").
 
 GCP project `domovoy-tdnsh` (number `429045293034`), region `europe-west2`
 (London). The site names are the defaults in
@@ -41,31 +46,42 @@ browser ──https──▶ Firebase Hosting (<site>.web.app, CDN)
   `--set-secrets`. Only that environment's runtime service account can read them.
   GitHub holds **no secrets** for this path.
 - **Non-secret config** comes from repository-level GitHub Actions variables:
-  shared `GCP_*` ones, plus `GCP_DEV_*` / `GCP_PROD_*`, chosen by branch (see
-  below). GitHub Environments are **not** used, because a private repository
-  on GitHub Free may not have them. The branch restriction they would add is
-  enforced in GCP instead, by the WIF condition and per-branch deployer
-  bindings. The per-branch `concurrency` group serialises deploys.
+  shared `GCP_*` ones, plus `GCP_DEV_*` / `GCP_PROD_*`, chosen by the
+  environment being deployed (see below), and `NEON_PROJECT_ID`. GitHub
+  Environments are **not** used, because a private repository on GitHub Free
+  may not have them. The restrictions they would add are enforced in GCP
+  instead, by the WIF condition and per-environment deployer bindings. A
+  `concurrency` group per environment (`gcp-prod`, `gcp-dev`) serialises
+  deploys.
   CI also sets `domovoy_session_cookie_name=__session` and
   `domovoy_csrf_use_sessions=true`, which apply only on GCP (see "Firebase
   quirks").
 - **CI → GCP auth** uses Workload Identity Federation. There are no keys.
   - The pool `domovoy-github` is used only for this repository.
-  - Its provider accepts only tokens whose `repository_id` is `862461320`,
-    whose `repository_owner_id` is `8523691`, and whose ref is
-    `refs/heads/main` or `refs/heads/dev`.
-  - Each environment has its own deployer. Its `workloadIdentityUser` binding
-    names both the repository and the branch:
-    `principalSet://…/workloadIdentityPools/domovoy-github/attribute.repo_ref/862461320/refs/heads/<branch>`.
-    `repo_ref` is mapped as `assertion.repository_id + '/' + assertion.ref`.
-    So even if another provider were ever added to the pool, only this repo's
-    `main` can act as the prod deployer, and only its `dev` as the dev
-    deployer.
+  - Its provider accepts only tokens whose `repository_id` is `862461320` and
+    whose `repository_owner_id` is `8523691`, from either a run on
+    `refs/heads/main` or a manual "Run workflow" (`event_name ==
+    'workflow_dispatch'`, which only people with write access can start).
+    Pull requests, including from forks, can't get a token.
+  - Each environment has its own deployer, with its own
+    `workloadIdentityUser` binding:
+    - prod: `principalSet://…/workloadIdentityPools/domovoy-github/attribute.repo_ref/862461320/refs/heads/main`,
+      where `repo_ref` is mapped as `assertion.repository_id + '/' + assertion.ref`.
+      Only this repo's `main` can act as the prod deployer.
+    - dev: `principalSet://…/workloadIdentityPools/domovoy-github/attribute.repository_id/862461320`,
+      so any run the provider admits from this repo: `main`, or a manual run
+      on any branch.
+  - A manual run uses the chosen branch's own copy of the workflow, so a
+    branch can change what runs with the dev deployer. That is the point of
+    deploying a branch to dev; it is limited by who can push branches and
+    start runs (people with write access), and the dev deployer can't reach
+    prod's service, secrets or database.
 
   | Service account | Roles (scope) |
   | --- | --- |
   | `domovoy-<env>-run` (runtime) | `secretmanager.secretAccessor` on its 5 secrets only |
   | `domovoy-<env>-deploy` (CI) | `run.developer` on its service and migrate job; `iam.serviceAccountUser` on its runtime SA; `artifactregistry.writer` on the `domovoy` repo; `firebasehosting.admin` and `serviceusage.serviceUsageConsumer` on the project (no narrower scope exists) |
+| `domovoy-prod-deploy` only | `secretmanager.secretAccessor` on `domovoy-neon-api-key`, to reset dev's database |
 
   The deployer cannot change who may invoke the service. The bootstrap script
   makes the service public (`allUsers` → `run.invoker`) once, because Firebase
@@ -73,24 +89,42 @@ browser ──https──▶ Firebase Hosting (<site>.web.app, CDN)
 
   `firebasehosting.admin` can only be granted project-wide, so the dev deployer
   could technically deploy the prod Hosting site. This is accepted: both
-  deployers can only be reached from this repository's own `main` / `dev`
-  branches, and the prod API, secrets and database stay out of the dev
-  deployer's reach.
+  deployers can only be reached from this repository's `main` or a manual run
+  by someone with write access, and the prod API, secrets and database stay
+  out of the dev deployer's reach.
 
-### CI flow (`.github/workflows/ci.yml`, job `deploy-gcp`)
+### CI flow (`.github/workflows/ci.yml` and `deploy-gcp.yml`)
 
-The job runs on push to `main`/`dev`, after `checks` passes, and only when the
-repository variable `GCP_DEPLOY_ENABLED` is `true`. Its concurrency group
-(`gcp-<branch>`) has no cancel-in-progress. It:
+Deploy jobs only run when the repository variable `GCP_DEPLOY_ENABLED` is
+`true` (set it to anything else to pause deploys), and only after `checks` and
+`tests-postgres` pass.
 
-1. selects the `GCP_PROD_*` or `GCP_DEV_*` variables by branch, and fails if
-   any is missing;
+| Trigger | Jobs, in order |
+| --- | --- |
+| Push to `main` (a merged PR) | **Deploy prod** → **Reset dev database from prod** → **Deploy dev** (from `main`) |
+| *Actions → Build and Deploy → Run workflow* on any branch | **Deploy dev** from that branch (database left as it is) |
+| Pull request | checks only |
+
+Each deploy (the reusable workflow `deploy-gcp.yml`, called with
+`environment: prod` or `dev`):
+
+1. selects the `GCP_PROD_*` or `GCP_DEV_*` variables, and fails if any is
+   missing;
 2. authenticates with WIF (with `gcloud` itself, no third-party action);
 3. builds and pushes the image, then resolves its digest;
 4. updates the `domovoy-<env>-migrate` job to that digest and runs it with
    `--wait`, which fails the deploy if migrations fail;
 5. deploys the Cloud Run service at that digest;
 6. builds the SPA and deploys the Firebase Hosting target `gcp-<env>`.
+
+The database reset
+([`deploy/gcp/reset-dev-database.py`](../deploy/gcp/reset-dev-database.py))
+runs as the prod deployer, reads the Neon API key from Secret Manager, and
+resets Neon's `dev` branch to the head of its parent `production` (Neon's
+"reset from parent"). It refuses to touch a branch that is the project's
+default, is protected, or isn't a child of `production`. Dev deploys and the
+reset share the `gcp-dev` concurrency group, so they never overlap. If prod's
+deploy fails, the reset and the dev deploy are skipped.
 
 ## One-time setup (in this order)
 
@@ -107,7 +141,9 @@ is on the free plan in **AWS Europe West 2 (London)**:
 1. On the default branch **`production`** (prod), create the role `domovoy` and
    the database `domovoy` owned by it.
 2. Create a child branch `dev` from `production`. It inherits the role and
-   database.
+   database. Leave it unprotected and don't give it children: CI resets it
+   from `production` after every prod deploy, and refuses to if either is
+   true.
 3. For **each** branch, copy two connection strings for role `domovoy` and
    database `domovoy` from *Connect*:
    - **pooled**: "Connection pooling" on, so the host contains `-pooler`. This
@@ -115,6 +151,11 @@ is on the free plan in **AWS Europe West 2 (London)**:
    - **direct**: pooling off. This becomes `domovoy-<env>-database-url-direct`.
 
    Both strings must include `sslmode=require`. See [DATABASE.md](DATABASE.md).
+4. Create a Neon **API key** for CI's dev reset (*Account settings → API keys*,
+   or a project-scoped key for this project if your account offers one; a
+   personal key can manage every project in the account). It goes into Secret
+   Manager in step 3, not GitHub. Note the **project ID** from the project's
+   *Settings* page for step 4.
 
 The free plan suspends idle compute and **archives idle branches**. The first
 query after that wakes or unarchives the branch, which adds a few seconds of
@@ -171,14 +212,16 @@ done
   any placeholder works for the SMTP password.
 - To rotate a secret, add a version and redeploy (re-run the workflow). Services
   read `:latest` when a revision starts.
+- The Neon API key goes into `domovoy-neon-api-key` the same way (the script
+  prints the command). Only the prod deployer can read it.
 
 ### 4. GitHub repository variables
 
 Add these in *Settings → Secrets and variables → Actions → **Variables** → New
 repository variable*. They are variables, not secrets, and no GitHub
-Environments are needed. The script prints the exact values. The deploy job
-picks `GCP_PROD_*` on `main` and `GCP_DEV_*` on `dev`, and fails early if any
-variable for that branch is missing (it never falls back to the other set).
+Environments are needed. The script prints the exact values. Each deploy
+picks `GCP_PROD_*` or `GCP_DEV_*` for the environment it's deploying, and fails
+early if any is missing (it never falls back to the other set).
 
 | Variable | Example |
 | --- | --- |
@@ -186,6 +229,7 @@ variable for that branch is missing (it never falls back to the other set).
 | `GCP_REGION` | `europe-west2` |
 | `GCP_WIF_PROVIDER` | `projects/429045293034/locations/global/workloadIdentityPools/domovoy-github/providers/domovoy` |
 | `GCP_SMTP_SERVER`, `GCP_SMTP_PORT`, `GCP_SMTP_USERNAME` | your SMTP settings, shared by both environments (placeholders are fine for now) |
+| `NEON_PROJECT_ID` | the Neon project's ID (*Settings* page), used to reset dev's database |
 | `GCP_DEV_DEPLOYER_SA` | `domovoy-dev-deploy@domovoy-tdnsh.iam.gserviceaccount.com` |
 | `GCP_DEV_RUNTIME_SA` | `domovoy-dev-run@domovoy-tdnsh.iam.gserviceaccount.com` |
 | `GCP_DEV_IMAGE` | `europe-west2-docker.pkg.dev/domovoy-tdnsh/domovoy/domovoy-dev` |
@@ -197,18 +241,15 @@ variable for that branch is missing (it never falls back to the other set).
 | `GCP_PROD_*` | the same eight, for `domovoy-prod` / site `domovoy-tdnsh` |
 
 Finally, add the **repository** variable `GCP_DEPLOY_ENABLED=true` (*Settings →
-Secrets and variables → Actions → Variables*). Until you do, the `deploy-gcp`
-job is skipped, so merging this PR before bootstrap leaves CI green.
+Secrets and variables → Actions → Variables*). Until you do, the deploy jobs
+are skipped.
 
 ### 5. First deploy
 
-1. Push to `dev`, or re-run the latest `dev` workflow run. Watch `deploy-gcp`.
-2. Check the dev site (see "Verifying after a deploy").
-3. Either refresh dev from prod (see "Refreshing dev with a copy of prod
-   data"), or create an admin user with the **direct** URL. Run this from
-   `domovoy/`, with the other required `domovoy_*` variables set to anything:
-   `domovoy_database_url='<dev direct url>' uv run python manage.py createsuperuser`.
-4. Repeat for `main` → prod. Smoke-test prod with the `curl` checks below.
+1. Deploy a branch to dev with *Run workflow* (see "Deploying a branch to
+   dev") and check the dev site (see "Verifying after a deploy").
+2. Merge to `main`. That deploys prod, resets dev's database from prod and
+   deploys `main` to dev. Smoke-test both with the `curl` checks below.
 
 ## Verifying after a deploy
 
@@ -264,15 +305,38 @@ In the console, use *Logging → Logs Explorer* with the same filter, or open
 to the project can read these links, which are live credentials until used or
 expired.
 
-## Refreshing dev with a copy of prod data
+## Deploying a branch to dev
 
-Dev's Neon branch is a child of `production`, so you can reset it to prod's
-current data: *Neon → Branches → dev → Reset from parent*. If `dev` has
-migrations that `main` doesn't yet, re-run the latest `dev` workflow
-afterwards, so the migrate job brings the schema forward. Session keys live
-in each browser's localStorage per origin, so expect to log in again on dev.
+To try a branch on `dom-dev.tdn.sh` before merging it: *Actions → Build and
+Deploy → Run workflow*, choose the branch, and run. The same checks run first;
+then **Deploy dev** deploys that branch. Or from a terminal:
 
-Dev then holds real household data, so treat it accordingly.
+```sh
+gh workflow run "Build and Deploy" --ref <branch>
+```
+
+- Dev's database is left as it is, so the branch's migrations run on top of
+  the last copy of prod. If they're incompatible with `main`'s, the next merge
+  to `main` puts things right: the database is reset from prod before `main`
+  is deployed.
+- Dev holds one branch at a time. The next manual run or merge to `main`
+  replaces it, and runs queue rather than overlap.
+
+## Dev's data
+
+After every prod deploy, CI resets Neon's `dev` branch to a copy of
+`production`, so dev always starts from real, current data and anything
+written to it since is discarded. Two things follow from it being a copy:
+
+- **It's prod's data.** Treat dev with the same care as prod: real people's
+  names and emails, and the same household history.
+- **Logins don't carry over.** Sessions are copied too, but they're signed with
+  the Django secret key and dev has its own, so prod's sessions don't work
+  there (unless dev's `-secret-key-fallbacks` lists prod's key; keep it out).
+  Log in to dev separately (its login links are in dev's Cloud Logging).
+
+To reset it by hand, without a deploy: *Neon → Branches → dev → Reset from
+parent*.
 
 ## DNS
 
@@ -466,7 +530,22 @@ admins by email.
   for functions backends when rewrites exist, and tolerates a 403 there. If it
   fails some other way, enabling `cloudfunctions.googleapis.com` (no functions
   are created) should get past it.
-- **The job is skipped**: the repository variable `GCP_DEPLOY_ENABLED` isn't
-  `true`, or the push wasn't to `main` / `dev`.
+- **The deploy jobs are skipped**: the repository variable
+  `GCP_DEPLOY_ENABLED` isn't `true`, or the run was neither a push to `main`
+  nor a manual *Run workflow*. **Deploy dev** is also skipped on `main` when
+  prod's deploy or the database reset failed.
+- **"Reset dev database from prod" fails**:
+  - "NEON_API_KEY is not set" / a Secret Manager permission error: add the key
+    to `domovoy-neon-api-key` (step 3), or re-run `bootstrap.sh`, which grants
+    the prod deployer access to it.
+  - "NEON_PROJECT_ID is not set": add the repository variable (step 4).
+  - "Refusing to reset 'dev' …": the `dev` Neon branch is the default,
+    protected, or no longer a child of `production`. Fix that in Neon; the
+    script won't overwrite anything else.
+  - HTTP 401/403 from Neon: the API key was revoked or can't access the
+    project.
+- **A manual run fails at "Authenticate to Google Cloud"**: the identity
+  provider predates manual runs. Re-run `bootstrap.sh`; it updates the
+  provider condition and the dev deployer's binding.
 - **"Missing repository variables: …"**: add the variables it names (see step
   4). The job never falls back to the other environment's values.

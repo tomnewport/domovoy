@@ -70,7 +70,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 runtime_sa() { echo "domovoy-$1-run@$PROJECT_ID.iam.gserviceaccount.com"; }
 deployer_sa() { echo "domovoy-$1-deploy@$PROJECT_ID.iam.gserviceaccount.com"; }
-branch_for() { if [[ "$1" == prod ]]; then echo main; else echo dev; fi; }
+# Who may act as each deployer (on top of the provider condition, which only
+# admits this repository's pushes to main and manual "Run workflow" runs):
+# prod only from main; dev from main (after each prod deploy) or from a manual
+# run on any branch.
+deployer_member() {
+  if [[ "$1" == prod ]]; then
+    echo "principalSet://iam.googleapis.com/$WIF_POOL_NAME/attribute.repo_ref/$GITHUB_REPO_ID/refs/heads/main"
+  else
+    echo "principalSet://iam.googleapis.com/$WIF_POOL_NAME/attribute.repository_id/$GITHUB_REPO_ID"
+  fi
+}
+# Before dev could be deployed from any branch it had its own git branch.
+OLD_DEV_MEMBER_SUFFIX="attribute.repo_ref/$GITHUB_REPO_ID/refs/heads/dev"
+NEON_KEY_SECRET="domovoy-neon-api-key"
 site_for() { if [[ "$1" == prod ]]; then echo "$PROD_SITE"; else echo "$DEV_SITE"; fi; }
 # Secrets read by the service (pooled DB URL) and by the migrate job (direct URL).
 # secret-key-fallbacks is a JSON list of old Django keys (service only).
@@ -100,7 +113,7 @@ if ! exists gc iam workload-identity-pools describe "$WIF_POOL" --location=globa
 fi
 WIF_CONDITION="assertion.repository_id == '$GITHUB_REPO_ID' \
 && assertion.repository_owner_id == '$GITHUB_OWNER_ID' \
-&& assertion.ref in ['refs/heads/main', 'refs/heads/dev']"
+&& (assertion.ref == 'refs/heads/main' || assertion.event_name == 'workflow_dispatch')"
 # repo_ref ("<repository id>/<ref>") lets each deployer binding name the
 # repository as well as the branch.
 WIF_MAPPING="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,\
@@ -123,7 +136,6 @@ for env in "${ENVS[@]}"; do
   service="domovoy-$env"
   run_sa="$(runtime_sa "$env")"
   deploy_sa="$(deployer_sa "$env")"
-  branch="$(branch_for "$env")"
 
   log "[$env] Service accounts"
   if ! exists gc iam service-accounts describe "$run_sa"; then
@@ -178,13 +190,26 @@ for env in "${ENVS[@]}"; do
     gc projects add-iam-policy-binding "$PROJECT_ID" --condition=None \
       --member="serviceAccount:$deploy_sa" --role="$role" >/dev/null
   done
-  # Only workflow runs of this repository on this environment's branch may
-  # act as its deployer.
+  # See deployer_member above for who may act as this deployer.
   gc iam service-accounts add-iam-policy-binding "$deploy_sa" \
     --role=roles/iam.workloadIdentityUser \
-    --member="principalSet://iam.googleapis.com/$WIF_POOL_NAME/attribute.repo_ref/$GITHUB_REPO_ID/refs/heads/$branch" \
+    --member="$(deployer_member "$env")" \
     >/dev/null
+  old_member="principalSet://iam.googleapis.com/$WIF_POOL_NAME/$OLD_DEV_MEMBER_SUFFIX"
+  if gc iam service-accounts get-iam-policy "$deploy_sa" --format=json | grep -qF "$old_member"; then
+    gc iam service-accounts remove-iam-policy-binding "$deploy_sa" \
+      --role=roles/iam.workloadIdentityUser --member="$old_member" >/dev/null
+  fi
 done
+
+# CI resets dev's Neon branch from production after each prod deploy. Only the
+# prod deployer (reachable only from main) can read the key.
+log "Secret $NEON_KEY_SECRET (Neon API key, for resetting dev's database)"
+if ! exists gc secrets describe "$NEON_KEY_SECRET"; then
+  gc secrets create "$NEON_KEY_SECRET" --replication-policy=user-managed --locations="$REGION"
+fi
+gc secrets add-iam-policy-binding "$NEON_KEY_SECRET" \
+  --member="serviceAccount:$(deployer_sa prod)" --role=roles/secretmanager.secretAccessor >/dev/null
 
 log "Firebase Hosting"
 if command -v firebase >/dev/null; then
@@ -231,6 +256,11 @@ EOF
 done
 
 cat <<EOF
+   # Neon API key, used to reset dev's database from production. Create it in
+   # the Neon console (a project-scoped key if your account offers one).
+   printf 'Neon API key: '; read -rs v; echo; printf '%s' "\$v" \\
+     | gcloud secrets versions add $NEON_KEY_SECRET --project=$PROJECT_ID --data-file=- ; unset v
+
 2. Add these repository variables in GitHub: Settings -> Secrets and
    variables -> Actions -> Variables -> New repository variable. They are not
    secrets, and GitHub Environments are not used.
@@ -241,6 +271,7 @@ cat <<EOF
    GCP_SMTP_SERVER=<smtp host>
    GCP_SMTP_PORT=<smtp port>
    GCP_SMTP_USERNAME=<smtp username>
+   NEON_PROJECT_ID=<Neon project ID, from the project's Settings page>
 
 EOF
 for env in "${ENVS[@]}"; do
@@ -265,5 +296,5 @@ EOF
 done
 cat <<EOF
 3. When the secrets and variables are in place, add the repository variable
-   GCP_DEPLOY_ENABLED=true to turn on the deploy-gcp CI job.
+   GCP_DEPLOY_ENABLED=true to turn on the deploy jobs in CI.
 EOF
