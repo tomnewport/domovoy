@@ -35,8 +35,8 @@ npm run domovoy-types  # regenerate src/services/domovoy/schema.d.ts from the ru
 ## Conventions & gotchas
 
 - The backend reads config from `domovoy/.env` via `environment.py`
-  (pydantic-settings). All variables are prefixed `domovoy_`. There is no
-  `.env.example` yet — see the README's Configuration table.
+  (pydantic-settings). All variables are prefixed `domovoy_`. Start from
+  `domovoy/.env.example`; the README's Configuration table describes each one.
 - There is one Poetry project: the root `pyproject.toml` + `poetry.lock` (the
   `Dockerfile` installs from there too). Don't add a `pyproject.toml` under
   `domovoy/`; Poetry would pick it up instead of the root one.

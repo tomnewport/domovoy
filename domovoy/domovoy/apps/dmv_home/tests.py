@@ -59,6 +59,18 @@ class HomeApiPermissionTests(TestCase):
         self.assertEqual(self.holiday(self.home_b, 1, 2).status_code, 404)
         self.assertFalse(self.bob_m.holiday_set.exclude(pk=self.bobs_holiday.pk).exists())
 
+    def test_finished_holidays_are_not_listed(self):
+        now = timezone.now()
+        for days_ago in (10, 1):  # ended 10 days ago; ends 1 day from now
+            Holiday.objects.create(
+                membership=self.alice_m,
+                note=f"{days_ago}",
+                from_date=now - timedelta(days=days_ago + 3),
+                to_date=now + timedelta(days=1) if days_ago == 1 else now - timedelta(days=days_ago),
+            )
+        notes = [h["note"] for h in self.api.get("/api/homes/v1/holidays").json()]
+        self.assertEqual(notes, ["1"])
+
     def test_holiday_dates_are_validated(self):
         self.assertEqual(self.holiday(self.home_a, 3, 1).status_code, 400)
         self.assertEqual(self.holiday(self.home_a, -5, -2).status_code, 400)

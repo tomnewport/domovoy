@@ -70,8 +70,11 @@ def update_home(request: HttpRequest, home_id: str, body: UpdateHomeRequest):
 
 @homes_v1_router.get("holidays", response={200: list[HolidaySchema]})
 def list_upcoming_holidays(request: HttpRequest) -> Manager[Holiday]:
+    """Your holidays that haven't ended yet, soonest first."""
     memberships = get_user_memberships(request)
-    return Holiday.objects.filter(membership__in=memberships)
+    return Holiday.objects.filter(
+        membership__in=memberships, to_date__gte=timezone.now()
+    ).order_by("from_date")
 
 
 @homes_v1_router.delete("holidays/{holiday_id}", response={200: None})

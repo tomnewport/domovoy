@@ -315,6 +315,31 @@ class AssignmentTests(TestCase):
     def test_no_rules_means_no_assignment(self, *_):
         self.assertIsNone(self.assign(self.make_job(rules=())))
 
+    def test_rules_that_never_match_mean_no_assignment(self, *_):
+        never = RuleCalendar(query=CalendarQuery.MONTH_AND_DAY, match=["02-30"])
+        self.assertIsNone(self.assign(self.make_job(rules=(never,))))
+
+    def test_queries_do_not_grow_with_members(self, *_):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        def queries(criticality):
+            job = RegularJobDefinition.objects.get(pk=self.make_job(criticality).pk)
+            with CaptureQueriesContext(connection) as captured:
+                self.assign(job)
+            return len(captured)
+
+        self.away(self.alice_m, 5, 12)
+        self.away(self.bob_m, 5, 12)
+        two = {c: queries(c) for c in CriticalityLevel}
+        for name in ("carol", "dave"):
+            m = Membership.objects.create(user=make_user(name), home=self.home)
+            self.away(m, 5, 12)
+        four = {c: queries(c) for c in CriticalityLevel}
+        self.assertEqual(two, four)
+        # The job's home, then memberships with users, then holidays.
+        self.assertEqual(set(four.values()), {3})
+
     def test_low_criticality_waits_for_the_assignee(self, *_):
         self.away(self.alice_m, 5, 10)
         result = self.assign(self.make_job(CriticalityLevel.LOW))
@@ -386,6 +411,10 @@ class ClaimTests(TestCase):
         self.assertEqual(job.validate_value(1), 2)
         self.assertEqual(job.validate_value(99), 20)
         self.assertEqual(job.validate_value(7), 7)
+
+    def test_zero_means_zero_not_the_default(self):
+        self.assertEqual(self.make_job().validate_value(0), 2)  # clamped to min
+        self.assertEqual(self.make_job(value_min=0).validate_value(0), 0)
 
     def test_scores_are_normalised_so_the_lowest_is_zero(self):
         job = self.make_job()

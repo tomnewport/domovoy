@@ -16,7 +16,8 @@ class Home(models.Model):
     d6_min = models.PositiveSmallIntegerField(default=1)
     d6_max = models.PositiveSmallIntegerField(default=6)
 
-    # bonus = job_value * (days_overdue / open_for_days) * (overdue_bounty / 100)
+    # Percentage that scales the bonus for doing someone else's overdue job;
+    # see RegularJobDefinition.bonus.
     overdue_bounty = models.PositiveSmallIntegerField(default=50)
 
     def __str__(self):
@@ -32,15 +33,13 @@ class Membership(models.Model):
         return f"{self.user} in {self.home}"
 
     def filter_available_dates(self, candidate_dates):
-        holidays = None
+        """Yield the candidate dates that don't fall in one of this member's holidays.
+
+        Reads `holiday_set.all()`, so prefetching `holiday_set` saves a query.
+        """
+        holidays = [(h.from_date.date(), h.to_date.date()) for h in self.holiday_set.all()]
         for candidate in candidate_dates:
-            if holidays is None:
-                holidays = self.holiday_set.filter(to_date__gte=candidate)
-            valid = True
-            for holiday in holidays:
-                if holiday.from_date.date() <= candidate <= holiday.to_date.date():
-                    valid = False
-            if valid:
+            if not any(first <= candidate <= last for first, last in holidays):
                 yield candidate
 
 

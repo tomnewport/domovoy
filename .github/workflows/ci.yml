@@ -92,6 +92,55 @@ jobs:
         working-directory: domovoy_app
         run: npm run build
 
+  # The Django tests again, on Postgres like production (`checks` uses SQLite).
+  tests-postgres:
+    name: Tests on Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: domovoy
+          POSTGRES_PASSWORD: ci-not-a-secret
+          POSTGRES_DB: domovoy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U domovoy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      domovoy_server_secret_key: ci-not-a-secret
+      domovoy_smtp_server: localhost
+      domovoy_smtp_port: "25"
+      domovoy_smtp_username: ci
+      domovoy_smtp_password: ci
+      domovoy_frontend_root: http://localhost:5173
+      domovoy_database_url: postgresql://domovoy:ci-not-a-secret@localhost:5432/domovoy
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Poetry
+        run: pipx install poetry==2.4.3
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: poetry
+
+      - name: Install backend dependencies
+        run: |
+          poetry env use "$(which python)"
+          poetry install --no-interaction
+
+      - name: Django tests
+        working-directory: domovoy
+        run: poetry -P .. run python manage.py test --noinput
+
   # Deployment (docs/DEPLOY_GCP.md): Cloud Run + Firebase Hosting.
   # main -> prod, dev -> dev. Configuration is in repository-level Actions
   # variables (GCP_PROD_* / GCP_DEV_*, plus shared GCP_*), not GitHub
@@ -102,7 +151,7 @@ jobs:
   deploy-gcp:
     name: Deploy to GCP
     runs-on: ubuntu-latest
-    needs: checks
+    needs: [checks, tests-postgres]
     if: >-
       github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')

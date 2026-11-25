@@ -9,7 +9,8 @@ class DmvSettings(BaseSettings):
     # from the VPS to GCP.
     domovoy_server_secret_key_fallbacks: list[str] = []
     domovoy_django_debug: bool = False
-    domovoy_allowed_hosts: list[str] = ["localhost", "dom-dev.tdn.sh", "domovoy.tdn.sh"]
+    # Deployments set their real hosts; the default only suits local development.
+    domovoy_allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
     domovoy_smtp_server: str
     domovoy_smtp_port: int
     domovoy_smtp_username: str
