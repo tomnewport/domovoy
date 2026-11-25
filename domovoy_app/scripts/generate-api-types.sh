@@ -14,7 +14,7 @@ trap 'rm -rf "$tmp"' EXIT
 
 (
   cd "$app/../domovoy"
-  poetry -P .. run python manage.py shell -c "
+  uv run python manage.py shell -c "
 from django.core.management import call_command
 from ninja.management.commands.export_openapi_schema import Command
 call_command(Command(), output='$tmp/openapi.json')"

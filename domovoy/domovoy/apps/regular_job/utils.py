@@ -1,28 +1,20 @@
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone as dt_timezone
+from zoneinfo import ZoneInfo
+
 from django.utils import timezone
-import pytz
 
 
 def before_midnight(input_date: datetime | date, timezone_str: str = "Europe/London") -> datetime:
-    """Returns one minute before midnight in the specified timezone, as a UTC time."""
+    """23:59 on `input_date`'s day in `timezone_str`, as a UTC datetime.
 
-    # Ensure input_date is a datetime object; if it's a date, add time
-    if isinstance(input_date, date) and not isinstance(input_date, datetime):
-        input_date = datetime.combine(input_date, time.min)
-
-    # Get the specified timezone object
-    local_tz = pytz.timezone(timezone_str)
-
-    # If datetime is naive, localize it; if aware, convert it to the specified timezone
-    if timezone.is_naive(input_date):
-        local_date = local_tz.localize(input_date)
-    else:
-        local_date = input_date.astimezone(local_tz)
-
-    # Set to one minute before midnight in the local timezone
-    one_minute_before_midnight = local_date.replace(hour=23, minute=59, second=0, microsecond=0)
-
-    # Convert to UTC
-    utc_date = one_minute_before_midnight.astimezone(pytz.utc)
-
-    return utc_date
+    A date or naive datetime is taken as already local to `timezone_str`; an
+    aware datetime is converted to it first. The UTC offset is the one in force
+    at 23:59, so days when the clocks change come out right.
+    """
+    local_tz = ZoneInfo(timezone_str)
+    if isinstance(input_date, datetime):
+        if timezone.is_aware(input_date):
+            input_date = input_date.astimezone(local_tz)
+        input_date = input_date.date()
+    deadline = datetime.combine(input_date, time(23, 59), tzinfo=local_tz)
+    return deadline.astimezone(dt_timezone.utc)

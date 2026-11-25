@@ -108,7 +108,7 @@ Comprehensive reference docs for the current state of the app live in
 │   └── src/services/domovoy # API client generated from the OpenAPI schema
 ├── deploy/gcp/              # one-time GCP bootstrap script + Artifact Registry policy
 ├── firebase.json           # Firebase Hosting: SPA, Cloud Run rewrites, cache headers
-├── pyproject.toml          # backend Poetry project (with poetry.lock)
+├── pyproject.toml          # backend uv project (with uv.lock; Python in .python-version)
 ├── Dockerfile              # backend image
 └── .github/workflows/ci.yml # checks, then deploy to Cloud Run + Firebase Hosting
 ```
@@ -121,11 +121,11 @@ Comprehensive reference docs for the current state of the app live in
 
 ```sh
 cd domovoy
-poetry install                 # uses the root pyproject.toml + poetry.lock
+uv sync                        # uv >= 0.13.10; installs Python 3.14 and the locked deps
 cp .env.example .env           # local settings; see "Configuration" below
-poetry run python manage.py migrate
-poetry run python manage.py runserver
-poetry run python manage.py test
+uv run python manage.py migrate
+uv run python manage.py runserver
+uv run python manage.py test
 ```
 
 The API is then served at `http://127.0.0.1:8000/api/` with interactive docs at

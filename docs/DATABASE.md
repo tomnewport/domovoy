@@ -27,7 +27,7 @@ There are no data migrations (`RunPython`) and no model signals, so a
 
    ```sh
    cd domovoy
-   poetry run python manage.py dumpdata \
+   uv run python manage.py dumpdata \
      --natural-foreign \
      --exclude contenttypes --exclude auth.permission \
      --indent 2 -o domovoy-dump.json
@@ -62,8 +62,8 @@ There are no data migrations (`RunPython`) and no model signals, so a
 
    ```sh
    export domovoy_database_url='postgresql://...direct-host.../domovoy?sslmode=require'
-   poetry run python manage.py migrate
-   poetry run python manage.py loaddata domovoy-dump.json
+   uv run python manage.py migrate
+   uv run python manage.py loaddata domovoy-dump.json
    ```
 
    `loaddata` resets the Postgres ID sequences, so new rows don't collide with
@@ -73,7 +73,7 @@ There are no data migrations (`RunPython`) and no model signals, so a
    this with and without `domovoy_database_url` set:
 
    ```sh
-   poetry run python manage.py shell -c "
+   uv run python manage.py shell -c "
    from django.apps import apps
    for m in apps.get_models(): print(m._meta.label, m.objects.count())"
    ```

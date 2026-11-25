@@ -339,23 +339,23 @@ export interface components {
         };
         /** HomeSchema */
         HomeSchema: {
-            /** Memberships */
-            memberships: components["schemas"]["MembershipSchema"][];
             /** ID */
             id?: number | null;
             /** Name */
             name: string;
             /** Description */
             description?: string | null;
+            /** Memberships */
+            memberships: components["schemas"]["MembershipSchema"][];
         };
         /** MembershipSchema */
         MembershipSchema: {
-            user: components["schemas"]["UserSchema"];
             /**
              * Score
              * @default 0
              */
             score: number;
+            user: components["schemas"]["UserSchema"];
         };
         /** UserSchema */
         UserSchema: {
@@ -379,7 +379,6 @@ export interface components {
         };
         /** HolidaySchema */
         HolidaySchema: {
-            membership: components["schemas"]["MembershipWithHomeSchema"];
             /** ID */
             id?: number | null;
             /** Note */
@@ -394,6 +393,7 @@ export interface components {
              * Format: date-time
              */
             to_date: string;
+            membership: components["schemas"]["MembershipWithHomeSchema"];
         };
         /** HomeOnlySchema */
         HomeOnlySchema: {
@@ -438,9 +438,6 @@ export interface components {
         CalendarQuery: "%B" | "%W" | "%A" | "%m-%d";
         /** RegularJobDefinitionSchema */
         RegularJobDefinitionSchema: {
-            rules: components["schemas"]["Ruleset"];
-            /** Bonus */
-            bonus: number;
             /** ID */
             id?: number | null;
             /** Home */
@@ -473,6 +470,9 @@ export interface components {
             next_assigned_start_date?: string | null;
             /** Next Assigned Due Date */
             next_assigned_due_date?: string | null;
+            rules: components["schemas"]["Ruleset"];
+            /** Bonus */
+            bonus: number;
         };
         /** RuleCalendar */
         RuleCalendar: {

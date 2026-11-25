@@ -9,3 +9,4 @@ domovoy/api-static
 # Keep the directory (SQLite's default location) but not local databases.
 domovoy/data/*
 !domovoy/data/Readme.md
+**/.venv

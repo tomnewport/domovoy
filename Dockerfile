@@ -1,9 +1,18 @@
-FROM python:3.12
-RUN pip install poetry
-COPY . /app
+FROM python:3.14-slim
+COPY --from=ghcr.io/astral-sh/uv:0.13.10 /uv /bin/uv
+
+# Use the image's Python, compile bytecode at build time, and put the
+# project's virtualenv first on PATH.
+ENV UV_PYTHON_DOWNLOADS=never \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
+
 WORKDIR /app
-RUN poetry config virtualenvs.create false
-RUN poetry install
+# Dependencies first, so a code-only change reuses this layer.
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --locked --no-dev
+COPY . /app
 WORKDIR /app/domovoy
 
 # Bake Django/admin static assets into the image; WhiteNoise serves them.
