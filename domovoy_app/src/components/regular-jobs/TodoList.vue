@@ -2,14 +2,29 @@
 import { useRegularJobStore, type RegularJobDefinition } from '@/stores/regular-job'
 import CompleteJobCard from '@/components/regular-jobs/CompleteJobCard.vue'
 import TodoItem from '@/components/regular-jobs/TodoItem.vue'
-import { computed, ref } from 'vue'
+import TodoItemClassic from '@/components/regular-jobs/TodoItemClassic.vue'
+import { computed, ref, watch } from 'vue'
 import { useCurrentUser } from '@/lookups/user'
 import { formatNaturalDateInline } from '@/utils/dates'
+import { readPreference, writePreference } from '@/utils/preferences'
 import { getJobClassification, JobClassification } from './utils'
 import JobEditor from './JobEditor.vue'
 
-// The task list, led by what can be done now: your jobs, then others' that
-// anyone can pick up. Later and unscheduled jobs are folded away.
+// The task list, in one of two layouts chosen per device:
+// - Simple: led by what can be done now (your jobs, then others' that anyone
+//   can pick up), with later and unscheduled jobs folded away.
+// - Classic: the original, grouped by how pressing each job is.
+// Search stays pinned under the toolbar: people often do a job that isn't
+// at the top of the list and look it up to mark it done.
+
+const LAYOUTS = ['classic', 'simple'] as const
+type Layout = (typeof LAYOUTS)[number]
+const layout = ref<Layout>(readPreference('tasks-layout', LAYOUTS, 'classic'))
+watch(layout, (value) => writePreference('tasks-layout', value))
+const LAYOUT_OPTIONS: { value: Layout; title: string; subtitle: string }[] = [
+  { value: 'classic', title: 'Classic', subtitle: 'Grouped by how pressing' },
+  { value: 'simple', title: 'Simple', subtitle: 'Yours, then up for grabs' }
+]
 
 const searchTerm = ref<string | null>(null)
 const sortType = ref<'priority' | 'due' | 'assigned'>('priority')
@@ -76,26 +91,42 @@ const yourNext = computed(() => {
   return `${job.name}, due ${formatNaturalDateInline(new Date(job.next_assigned_due_date))}`
 })
 
-// The flat list, for the date sorts. Jobs with no date go last.
-const flat = computed(() => {
-  const key = sortType.value === 'assigned' ? 'next_assigned_date' : 'next_assigned_due_date'
+// One list by a date: due soonest first, or assigned most recently first.
+// Jobs with no date go last.
+function flatBy(key: 'next_assigned_date' | 'next_assigned_due_date') {
   return [...matched.value].sort((x, y) => {
     const a = x.job[key]
     const b = y.job[key]
     if (!a || !b) return a ? -1 : b ? 1 : x.job.name.localeCompare(y.job.name)
-    return sortType.value === 'assigned' ? b.localeCompare(a) : a.localeCompare(b)
+    return key === 'next_assigned_date' ? b.localeCompare(a) : a.localeCompare(b)
   })
-})
+}
+const flat = computed(() =>
+  flatBy(sortType.value === 'assigned' ? 'next_assigned_date' : 'next_assigned_due_date')
+)
+
+// Classic: a section per classification, most pressing first, each by due date.
+const CLASSIC_SECTIONS = [
+  { classification: JobClassification.URGENT, title: 'Urgent' },
+  { classification: JobClassification.PRIORITY, title: 'Priority' },
+  { classification: JobClassification.OVERDUE, title: 'Overdue' },
+  { classification: JobClassification.ASSIGNED, title: 'Assigned to me' },
+  { classification: JobClassification.IN_HOME, title: 'Ready to do' },
+  { classification: JobClassification.FUTURE, title: 'Coming up' },
+  { classification: JobClassification.UNSCHEDULED, title: 'Not scheduled' }
+]
+const classicSections = computed(() =>
+  CLASSIC_SECTIONS.map((section) => ({
+    ...section,
+    jobs: flatBy('next_assigned_due_date').filter(
+      (c) => c.classification === section.classification
+    )
+  })).filter((section) => section.jobs.length > 0)
+)
 
 const searching = computed(() => !!searchTerm.value?.trim())
 const showLater = ref(false)
 const showUnscheduled = ref(false)
-// Search and sort live in the toolbar; the search field opens under it.
-const searchOpen = ref(false)
-function toggleSearch() {
-  searchOpen.value = !searchOpen.value
-  if (!searchOpen.value) searchTerm.value = null
-}
 const SORTS = [
   { value: 'priority', title: 'What to do now' },
   { value: 'due', title: 'Due date' },
@@ -110,22 +141,14 @@ function openCard(job: RegularJobDefinition) {
 }
 </script>
 <template>
-  <v-toolbar app color="secondary" fixed class="fixed-bar" title="Tasks">
-    <v-btn
-      icon
-      :aria-label="searchOpen ? 'Close search' : 'Search jobs'"
-      :aria-pressed="searchOpen"
-      @click="toggleSearch"
-    >
-      <v-icon :icon="searchOpen ? 'mdi-close' : 'mdi-magnify'" />
-    </v-btn>
-    <v-menu>
+  <v-toolbar app color="secondary" fixed class="fixed-bar" title="Tasks" extended>
+    <v-menu :close-on-content-click="false">
       <template #activator="{ props }">
-        <v-btn v-bind="props" icon aria-label="Sort tasks">
-          <v-icon icon="mdi-sort" />
+        <v-btn v-bind="props" icon aria-label="List options">
+          <v-icon icon="mdi-tune-variant" />
         </v-btn>
       </template>
-      <v-list density="comfortable" min-width="220">
+      <v-list density="comfortable" min-width="240">
         <v-list-subheader>Sort by</v-list-subheader>
         <v-list-item
           v-for="sort in SORTS"
@@ -138,8 +161,41 @@ function openCard(job: RegularJobDefinition) {
             <v-icon v-if="sortType === sort.value" icon="mdi-check" size="18" />
           </template>
         </v-list-item>
+        <v-divider class="my-1" />
+        <v-list-subheader>Layout</v-list-subheader>
+        <v-list-item
+          v-for="option in LAYOUT_OPTIONS"
+          :key="option.value"
+          :active="layout === option.value"
+          :title="option.title"
+          :subtitle="option.subtitle"
+          @click="layout = option.value"
+        >
+          <template #append>
+            <v-icon v-if="layout === option.value" icon="mdi-check" size="18" />
+          </template>
+        </v-list-item>
       </v-list>
     </v-menu>
+    <template #extension>
+      <!-- Pinned with the toolbar, so it's there wherever the list is scrolled. -->
+      <v-text-field
+        v-model="searchTerm"
+        clearable
+        variant="solo"
+        bg-color="surface"
+        density="compact"
+        flat
+        rounded
+        prepend-inner-icon="mdi-magnify"
+        placeholder="Search jobs"
+        aria-label="Search jobs"
+        hide-details
+        single-line
+        class="mx-4"
+        @keydown.escape="searchTerm = null"
+      />
+    </template>
   </v-toolbar>
   <JobEditor back-link="/tasks" />
   <v-dialog v-model="open">
@@ -155,20 +211,6 @@ function openCard(job: RegularJobDefinition) {
     />
   </v-dialog>
 
-  <div v-if="searchOpen" class="px-4 pt-3">
-    <v-text-field
-      v-model="searchTerm"
-      autofocus
-      variant="outlined"
-      density="comfortable"
-      prepend-inner-icon="mdi-magnify"
-      placeholder="Search jobs"
-      aria-label="Search jobs"
-      hide-details
-      single-line
-      @keydown.escape="toggleSearch"
-    />
-  </div>
   <div v-if="sortType !== 'priority'" class="px-4 pt-2 text-body-2 text-medium-emphasis">
     Sorted by {{ SORTS.find((s) => s.value === sortType)?.title.toLowerCase() }}
   </div>
@@ -197,6 +239,19 @@ function openCard(job: RegularJobDefinition) {
         <div class="text-body-2">Jobs from your homes appear here once they're scheduled.</div>
       </template>
     </div>
+
+    <template v-else-if="sortType === 'priority' && layout === 'classic'">
+      <template v-for="section in classicSections" :key="section.classification">
+        <v-list-subheader>{{ section.title }}</v-list-subheader>
+        <TodoItemClassic
+          v-for="c of section.jobs"
+          :key="c.job.id ?? -1"
+          :job="c.job"
+          :classification="c.classification"
+          :on-click="() => openCard(c.job)"
+        />
+      </template>
+    </template>
 
     <template v-else-if="sortType === 'priority'">
       <!-- Yours: always shown, so an empty list says you're done, not lost. -->
@@ -295,6 +350,16 @@ function openCard(job: RegularJobDefinition) {
       </template>
     </template>
 
+    <template v-else-if="layout === 'classic'">
+      <TodoItemClassic
+        v-for="c of flat"
+        :key="c.job.id ?? -1"
+        :job="c.job"
+        :classification="c.classification"
+        :show-date="sortType === 'assigned' ? 'assigned' : 'due'"
+        :on-click="() => openCard(c.job)"
+      />
+    </template>
     <template v-else>
       <TodoItem
         v-for="c of flat"
