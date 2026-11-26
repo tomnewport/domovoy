@@ -50,6 +50,9 @@ The API layer lives in `src/services/domovoy/`:
 `src/utils/hashcash.ts` is the client-side proof-of-work solver mirroring the
 backend's `security/hashcash.py` (both retired under issue #17).
 
+Per-device settings (such as the task list layout) go through
+`src/utils/preferences.ts`, which, unlike the cache, survives logging out.
+
 The stats maths lives in `src/utils/` too: `progress.ts` (a member's points,
 jobs, on-time rate and streak per period, and a home's standings), `upkeep.ts`
 (upkeep ratio and status, a home's job and on-time counts per period, and its
@@ -87,10 +90,15 @@ Grouped by domain:
   `UpkeepMeter`, `CreateHome`, `HomeJobList`.
 - **`activity/`** — `ActivityFeed`: completed jobs, newest first, for one
   person (Profile) or one home (with a chip per member to narrow it).
-- **`regular-jobs/`** — the largest group: `TodoList` / `TodoItem`,
+- **`regular-jobs/`** — the largest group: `TodoList`, with search pinned
+  under the toolbar and two layouts chosen per device in its options menu:
+  Classic (`TodoItemClassic`, grouped by how pressing each job is) and
+  Simple (`TodoItem`: Yours, Up for grabs, then folded Coming up and Not
+  scheduled; each row a name, when and whose, and its points). Tapping a
+  job opens its `CompleteJobCard`.
   `JobEditor` / `CreateRegularJob`, `RulesEditor` (+ `RuleDelayEditor`,
-  `RuleCalendarEditor`), `CompleteJobCard` / `QuickCompleteJob`,
-  `CongratulateCard`, `JobAssignerResult`, `InstanceViewer`,
+  `RuleCalendarEditor`), `CompleteJobCard`, `CongratulateCard` (mounted in
+  `App.vue`), `JobAssignerResult`, `InstanceViewer`,
   `RegularJobDefinitionList`.
 - **`profile/`** — your own contribution: `ProgressTiles`, `HomeContributions`
   (your share of each home's points), `TopJobs`, and the holiday planner

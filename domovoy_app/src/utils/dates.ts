@@ -22,3 +22,9 @@ export function formatNaturalDate(value: Date, now: Date = new Date()): string {
   if (isThisYear(value)) return format(value, 'do MMMM')
   return format(value, 'do MMMM yyy')
 }
+
+// The same, to follow a word: "Due today", "Due this Friday".
+export function formatNaturalDateInline(value: Date, now: Date = new Date()): string {
+  const text = formatNaturalDate(value, now)
+  return /^(Today|Tomorrow|Yesterday)$/.test(text) ? text.toLowerCase() : text
+}
