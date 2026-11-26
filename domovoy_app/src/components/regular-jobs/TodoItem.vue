@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { RegularJobDefinition } from '@/stores/regular-job'
-import { useQuickClaimStore } from '@/stores/quick-claim'
 import { formatNaturalDateInline } from '@/utils/dates'
 import { JobClassification } from './utils'
 
-// One job on the task list, kept to three things: a circle to tick it off
-// (at its usual points, with a few seconds to undo), its name with one line
-// of when and whose, and what it's worth. Everything else (the points
-// range, the bonus breakdown, the home, snoozing) is on its card, which
-// tapping the job opens.
+// One job on the task list: its name, one line of when and whose, and what
+// it's worth. Tapping it opens its card, where it's marked done (jobs are
+// done one at a time, so that's a deliberate step) or snoozed, and which
+// has the rest: the points range, the bonus breakdown, the home.
 const {
   job,
   classification,
@@ -23,10 +21,7 @@ const {
   showDate?: 'due' | 'assigned'
   onOpen: () => void
 }>()
-const quickClaim = useQuickClaimStore()
-
-const pending = computed(() => quickClaim.isPending(job.id))
-// What ticking it off earns you now: the usual points, plus the bonus for
+// What doing it earns you now: the usual points, plus the bonus for
 // picking up someone else's late job.
 const points = computed(() => job.value_default + (!mine && job.bonus ? job.bonus : 0))
 
@@ -58,43 +53,19 @@ const line = computed(() => {
 })
 </script>
 <template>
-  <v-list-item
-    class="todo-item"
-    :class="{ 'todo-item--pending': pending }"
-    :ripple="!pending"
-    @click="pending || onOpen()"
-  >
-    <template #prepend>
-      <!-- Ticked: tap again to undo, like a checklist. -->
-      <v-btn
-        icon
-        variant="text"
-        size="small"
-        class="todo-item__tick mr-2"
-        :class="{ 'todo-item__tick--done': pending }"
-        :aria-label="pending ? `Undo ${job.name}` : `Mark ${job.name} done, ${points} points`"
-        :aria-pressed="pending"
-        @click.stop="pending ? quickClaim.undo(job.id as number) : quickClaim.tick(job)"
-      >
-        <v-icon :icon="pending ? 'mdi-check-circle' : 'mdi-circle-outline'" size="26" />
-      </v-btn>
-    </template>
-
+  <v-list-item class="todo-item" @click="onOpen()">
     <v-list-item-title class="todo-item__title">{{ job.name }}</v-list-item-title>
     <v-list-item-subtitle>
-      <template v-if="pending">Done</template>
-      <template v-else>
-        <v-icon
-          v-if="line.icon"
-          :icon="line.icon"
-          :color="line.color ?? undefined"
-          size="14"
-          class="todo-item__status"
-        />
-        {{ line.text
-        }}<template v-if="!mine && job.next_assigned_to">
-          · <d-user-display variant="short">{{ job.next_assigned_to }}</d-user-display>
-        </template>
+      <v-icon
+        v-if="line.icon"
+        :icon="line.icon"
+        :color="line.color ?? undefined"
+        size="14"
+        class="todo-item__status"
+      />
+      {{ line.text
+      }}<template v-if="!mine && job.next_assigned_to">
+        · <d-user-display variant="short">{{ job.next_assigned_to }}</d-user-display>
       </template>
     </v-list-item-subtitle>
 
@@ -112,16 +83,6 @@ const line = computed(() => {
 .todo-item__status {
   vertical-align: -2px;
   margin-right: 2px;
-}
-.todo-item__tick {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-}
-.todo-item__tick--done {
-  color: rgb(var(--v-theme-primary));
-}
-.todo-item--pending .todo-item__title {
-  text-decoration: line-through;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
 }
 .todo-item__points {
   font-variant-numeric: tabular-nums;

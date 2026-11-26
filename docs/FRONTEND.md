@@ -44,7 +44,6 @@ The API layer lives in `src/services/domovoy/`:
 | `session.ts` | Current session/user; `setSessionId`, `reloadSession`, `clearSession`. Persists the key to `localStorage`. |
 | `homes.ts` | The user's homes and memberships. |
 | `regular-job.ts` | Job definitions, instances, claim/snooze actions. |
-| `quick-claim.ts` | Jobs ticked off from the task list: shown as done at once, sent after a 5-second Undo window (or straight away if the app is hidden). |
 | `hashcash-config.ts` | Caches the server's hashcash config for the PoW solver. |
 | `manager.ts` | Shared loading/error helper (`useLoadingState`). |
 
@@ -90,8 +89,8 @@ Grouped by domain:
   person (Profile) or one home (with a chip per member to narrow it).
 - **`regular-jobs/`** — the largest group: `TodoList` (Yours, Up for grabs,
   then folded Coming up and Not scheduled; or one list by date) /
-  `TodoItem` (a circle to tick a job off, its name, when and whose, and
-  its points; the rest is on the job's card),
+  `TodoItem` (a job's name, when and whose, and its points; tapping it
+  opens its `CompleteJobCard`),
   `JobEditor` / `CreateRegularJob`, `RulesEditor` (+ `RuleDelayEditor`,
   `RuleCalendarEditor`), `CompleteJobCard`, `CongratulateCard` (mounted in
   `App.vue`), `JobAssignerResult`, `InstanceViewer`,

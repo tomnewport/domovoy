@@ -127,22 +127,17 @@ export const useRegularJobStore = defineStore('regular-job', () => {
 
   async function claim({
     definition,
-    value,
-    celebrate = true
+    value
   }: {
     definition: RegularJobDefinition
     value?: number
-    // Open the "Well done" card at once; otherwise keep it for openMotivation().
-    celebrate?: boolean
-  }): Promise<ClaimResponse> {
+  }) {
     const result = await client.POST('/api/regular_jobs/v1/definitions/{definition_id}/instances', {
       headers: getHeaders(),
       params: { path: { definition_id: definition.id as number } },
       // Names the occurrence being completed: if it's already been done
       // (a double tap, a retry, a stale list), the server refuses with 409.
-      body: { value, assigned_at: definition.next_assigned_date },
-      // Finish sending even if the app is closed straight after.
-      keepalive: true
+      body: { value, assigned_at: definition.next_assigned_date }
     })
     if (result.response.status === 409) {
       void reload()
@@ -151,14 +146,13 @@ export const useRegularJobStore = defineStore('regular-job', () => {
     if (!result.data) throw new Error('Could not claim this job')
     replaceDefinition(result.data.definition)
     motivation.value = {
-      open: celebrate,
+      open: true,
       valueChange: result.data.value,
       stats: result.data.statistics,
       result: result.data.result
     }
     // Refresh the rest in the background: the congratulations dialog is up.
     void reload()
-    return result.data
   }
 
   const snoozeOptions = ref<Record<string, SnoozeOptionsState>>({})
@@ -219,17 +213,11 @@ export const useRegularJobStore = defineStore('regular-job', () => {
     motivation.value = null
   }
 
-  // Show the "Well done" card for the latest claim, if it wasn't shown then.
-  function openMotivation() {
-    if (motivation.value) motivation.value = { ...motivation.value, open: true }
-  }
-
   return {
     prefetchSnoozeOptions,
     snoozeOptionsFor,
     motivation,
     closeMotivation,
-    openMotivation,
     definitions,
     editDefinition,
     reload,

@@ -7,7 +7,7 @@ import {
   type RegularJobDefinition
 } from '@/stores/regular-job'
 import { useCurrentUser } from '@/lookups/user'
-import { formatNaturalDate } from '@/utils/dates'
+import { formatNaturalDate, formatNaturalDateInline } from '@/utils/dates'
 const { jobDefinition, onClose } = defineProps<{
   jobDefinition: RegularJobDefinition
   onClose: () => void
@@ -74,6 +74,12 @@ const me = useCurrentUser()
 
 const mine = computed(() => me.value?.id === jobDefinition.next_assigned_to)
 const scheduled = computed(() => !!jobDefinition.next_assigned_due_date)
+// Worded as on the task list: "Due today", "Due this Friday".
+const due = computed(() =>
+  jobDefinition.next_assigned_due_date
+    ? `Due ${formatNaturalDateInline(new Date(jobDefinition.next_assigned_due_date))}`
+    : ''
+)
 </script>
 
 <template>
@@ -96,12 +102,7 @@ const scheduled = computed(() => !!jobDefinition.next_assigned_due_date)
           ><d-user-display>{{ jobDefinition.next_assigned_to }}</d-user-display></span
         >
         <v-spacer></v-spacer>
-        <span
-          >Due
-          <d-date-display variant="natural">{{
-            jobDefinition.next_assigned_due_date
-          }}</d-date-display></span
-        >
+        <span>{{ due }}</span>
       </template>
       <span v-else>Not scheduled: anyone can do it any time</span>
     </v-card-subtitle>

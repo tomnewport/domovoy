@@ -66,7 +66,7 @@ onBeforeUnmount(() => {
     <v-main>
       <RouterView />
     </v-main>
-    <!-- App-wide: a claim's "See scores" can be opened from any page. -->
+    <!-- "Well done!" after a job is marked done. -->
     <CongratulateCard v-if="sessionStore.loggedIn" />
     <v-footer v-if="showBottomMenu" app class="pa-0">
       <BottomMenu />
