@@ -5,8 +5,8 @@ import AuthLayout from '@/components/auth/AuthLayout.vue'
   <AuthLayout compact>
     <div class="d-flex flex-column align-center text-center pa-6">
       <v-icon icon="mdi-link-variant-off" size="56" color="warning" class="mb-3" />
-      <h2 class="text-h6">That link didn’t work</h2>
-      <p class="text-body-2 text-medium-emphasis mt-2">
+      <h2 class="text-title-large">That link didn’t work</h2>
+      <p class="text-body-medium text-medium-emphasis mt-2">
         Login links work once and expire after 30 minutes. If you asked for more than one, only the
         newest works.
       </p>

@@ -49,15 +49,15 @@ const ranked = computed(() => (stats.value ? standings(stats.value, 7) : []))
   <v-card :to="`/homes/${home.id}`" class="pa-4" variant="tonal">
     <div class="d-flex align-start">
       <div class="flex-grow-1 min-w-0">
-        <div class="text-h6">{{ home.name }}</div>
-        <div v-if="home.description" class="text-body-2 text-medium-emphasis text-truncate">
+        <div class="text-title-large">{{ home.name }}</div>
+        <div v-if="home.description" class="text-body-medium text-medium-emphasis text-truncate">
           {{ home.description }}
         </div>
       </div>
       <v-icon icon="mdi-chevron-right" class="text-medium-emphasis" aria-hidden="true" />
     </div>
 
-    <div v-if="failed" class="text-body-2 text-medium-emphasis mt-3">
+    <div v-if="failed" class="text-body-medium text-medium-emphasis mt-3">
       <v-icon icon="mdi-alert" size="16" /> Couldn't load this week's numbers.
     </div>
 
@@ -67,7 +67,7 @@ const ranked = computed(() => (stats.value ? standings(stats.value, 7) : []))
 
     <template v-else>
       <div class="d-flex align-center justify-space-between mt-3 mb-1">
-        <span class="text-body-2 text-medium-emphasis">Upkeep this week</span>
+        <span class="text-body-medium text-medium-emphasis">Upkeep this week</span>
         <v-chip
           v-if="status"
           :color="status.color"
@@ -80,8 +80,8 @@ const ranked = computed(() => (stats.value ? standings(stats.value, 7) : []))
       </div>
       <template v-if="week.ratio !== null">
         <div class="d-flex align-baseline ga-2">
-          <span class="text-h5 font-weight-bold">{{ Math.round(week.ratio * 100) }}%</span>
-          <span class="text-body-2 text-medium-emphasis">
+          <span class="text-headline-small font-weight-bold">{{ Math.round(week.ratio * 100) }}%</span>
+          <span class="text-body-medium text-medium-emphasis">
             {{ week.points }} of {{ Math.round(week.ideal) }} points
           </span>
         </div>
@@ -92,9 +92,9 @@ const ranked = computed(() => (stats.value ? standings(stats.value, 7) : []))
           class="mt-1"
         />
       </template>
-      <div v-else class="text-body-2 text-medium-emphasis">No scheduled jobs yet.</div>
+      <div v-else class="text-body-medium text-medium-emphasis">No scheduled jobs yet.</div>
 
-      <div class="d-flex flex-wrap align-center ga-3 mt-3 text-body-2">
+      <div class="d-flex flex-wrap align-center ga-3 mt-3 text-body-medium">
         <span v-if="regularJobStore.hasData" class="d-inline-flex align-center ga-1">
           <template v-if="overdue.length">
             <v-icon icon="mdi-alert" color="warning" size="16" />

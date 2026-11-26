@@ -125,11 +125,11 @@ function completedLabel(value: string | null | undefined) {
   <v-row class="px-8 py-6">
     <v-col cols="6">
       <v-row class="justify-center"> Done every </v-row>
-      <v-row class="text-h5 justify-center">{{ doneEvery }}</v-row>
+      <v-row class="text-headline-small justify-center">{{ doneEvery }}</v-row>
     </v-col>
     <v-col cols="6">
       <v-row class="justify-center"> On time </v-row>
-      <v-row class="text-h5 justify-center">
+      <v-row class="text-headline-small justify-center">
         {{ summary.onTime === null ? '—' : `${Math.round(summary.onTime * 100)}%` }}
       </v-row>
     </v-col>

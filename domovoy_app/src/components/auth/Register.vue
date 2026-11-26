@@ -67,8 +67,8 @@ async function register() {
   <AuthLayout compact>
     <v-card-text v-if="complete" class="pa-6 text-center">
       <v-icon icon="mdi-email-check-outline" size="56" color="primary" class="mb-3" />
-      <h2 class="text-h6">Check your inbox</h2>
-      <p class="text-body-2 text-medium-emphasis mt-2">
+      <h2 class="text-title-large">Check your inbox</h2>
+      <p class="text-body-medium text-medium-emphasis mt-2">
         We sent a link to <strong>{{ email }}</strong> to confirm your address. Open it to finish
         signing in.
       </p>
@@ -77,7 +77,7 @@ async function register() {
 
     <template v-else>
       <v-card-item class="px-6 pt-6">
-        <v-card-title class="text-h6">Create your account</v-card-title>
+        <v-card-title class="text-title-large">Create your account</v-card-title>
         <v-card-subtitle>It only takes a minute.</v-card-subtitle>
       </v-card-item>
       <v-card-text class="px-6 pb-6">
@@ -154,7 +154,7 @@ async function register() {
     </template>
 
     <template #below>
-      <div v-if="!complete" class="text-center text-body-2">
+      <div v-if="!complete" class="text-center text-body-medium">
         Already have an account?
         <v-btn to="/" variant="text" color="primary" class="px-2">Log in</v-btn>
       </div>

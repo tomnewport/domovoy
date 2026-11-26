@@ -12,7 +12,7 @@ export const useHashcashConfigStore = defineStore('hashcashConfig', () => {
     try {
       hashcashConfig.value = (await API.usersV1.getHashcash()).data
       finishLoading()
-    } catch (err) {
+    } catch {
       setError('Could not load hashcash')
     }
   }

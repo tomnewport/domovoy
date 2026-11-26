@@ -27,7 +27,7 @@ const {
         >{{ job.name }}</span
       >
       <v-spacer></v-spacer>
-      <span v-if="job.next_assigned_to" class="text-body-2"
+      <span v-if="job.next_assigned_to" class="text-body-medium"
         ><d-user-display variant="short">{{ job.next_assigned_to }}</d-user-display></span
       >
     </v-list-item-title>

@@ -93,7 +93,7 @@ const cells = computed(() =>
         aria-label="Previous month"
         @click="month = addMonths(month, -1)"
       />
-      <div class="flex-grow-1 text-center text-subtitle-1 font-weight-medium" aria-live="polite">
+      <div class="flex-grow-1 text-center text-title-medium font-weight-medium" aria-live="polite">
         {{ format(month, 'MMMM yyyy') }}
       </div>
       <v-btn

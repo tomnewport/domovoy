@@ -56,18 +56,18 @@ function startOver() {
 <template>
   <div v-if="sentTo" class="text-center py-2">
     <v-icon icon="mdi-email-check-outline" size="56" color="primary" class="mb-3" />
-    <h2 class="text-h6">Check your inbox</h2>
-    <p class="text-body-2 text-medium-emphasis mt-2">
+    <h2 class="text-title-large">Check your inbox</h2>
+    <p class="text-body-medium text-medium-emphasis mt-2">
       We sent a login link to <strong>{{ sentTo }}</strong
       >. It works once and expires in 30 minutes.
     </p>
-    <p class="text-body-2 text-medium-emphasis mt-2">
+    <p class="text-body-medium text-medium-emphasis mt-2">
       Nothing there? Check your spam folder, or send another after a minute.
     </p>
     <v-btn variant="text" class="mt-3" v-on:click="startOver">Use a different email</v-btn>
   </div>
   <v-form v-else @submit.prevent="send" ref="form">
-    <p class="text-body-2 text-medium-emphasis mb-4">
+    <p class="text-body-medium text-medium-emphasis mb-4">
       We’ll email you a link that logs you straight in, no password needed.
     </p>
     <v-alert

@@ -211,7 +211,7 @@ function openCard(job: RegularJobDefinition) {
     />
   </v-dialog>
 
-  <div v-if="sortType !== 'priority'" class="px-4 pt-2 text-body-2 text-medium-emphasis">
+  <div v-if="sortType !== 'priority'" class="px-4 pt-2 text-body-medium text-medium-emphasis">
     Sorted by {{ SORTS.find((s) => s.value === sortType)?.title.toLowerCase() }}
   </div>
 
@@ -232,11 +232,11 @@ function openCard(job: RegularJobDefinition) {
     >
       <v-icon size="48" class="mb-3">{{ searchTerm ? 'mdi-magnify-close' : 'mdi-broom' }}</v-icon>
       <template v-if="searchTerm">
-        <div class="text-subtitle-1">No tasks match “{{ searchTerm }}”</div>
+        <div class="text-title-medium">No tasks match “{{ searchTerm }}”</div>
       </template>
       <template v-else>
-        <div class="text-subtitle-1">Nothing on the list</div>
-        <div class="text-body-2">Jobs from your homes appear here once they're scheduled.</div>
+        <div class="text-title-medium">Nothing on the list</div>
+        <div class="text-body-medium">Jobs from your homes appear here once they're scheduled.</div>
       </template>
     </div>
 
@@ -267,7 +267,7 @@ function openCard(job: RegularJobDefinition) {
         />
         <div
           v-if="!sections.yours.length"
-          class="d-flex align-center ga-3 px-4 pb-3 text-body-2 text-medium-emphasis"
+          class="d-flex align-center ga-3 px-4 pb-3 text-body-medium text-medium-emphasis"
         >
           <v-icon icon="mdi-check-circle-outline" color="success" />
           <span>
@@ -296,7 +296,7 @@ function openCard(job: RegularJobDefinition) {
           :disabled="searching"
           @click="showLater = !showLater"
         >
-          <v-list-item-title class="text-body-2 text-medium-emphasis">
+          <v-list-item-title class="text-body-medium text-medium-emphasis">
             Coming up · {{ sections.later.length }}
           </v-list-item-title>
           <template #append>
@@ -326,7 +326,7 @@ function openCard(job: RegularJobDefinition) {
           :disabled="searching"
           @click="showUnscheduled = !showUnscheduled"
         >
-          <v-list-item-title class="text-body-2 text-medium-emphasis">
+          <v-list-item-title class="text-body-medium text-medium-emphasis">
             Not scheduled · {{ sections.unscheduled.length }}
           </v-list-item-title>
           <template #append>

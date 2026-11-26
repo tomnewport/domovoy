@@ -97,7 +97,7 @@ watch([searchTerm, sortType], applySortSearch)
     </template>
     <div
       v-else-if="matchedDefinitions.length === 0"
-      class="text-center pa-6 text-medium-emphasis text-body-2"
+      class="text-center pa-6 text-medium-emphasis text-body-medium"
     >
       {{ searchTerm ? 'No jobs match your search.' : 'No jobs yet. Add one with the + button.' }}
     </div>

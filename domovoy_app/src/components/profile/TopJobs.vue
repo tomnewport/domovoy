@@ -41,8 +41,8 @@ const shown = computed(() => (expanded.value ? jobs.value : jobs.value.slice(0, 
 </script>
 <template>
   <v-card class="pa-4" variant="tonal">
-    <div class="text-body-2 text-medium-emphasis mb-1">What you did {{ periodLabel }}</div>
-    <div v-if="!jobs.length" class="text-body-2 text-medium-emphasis py-2">
+    <div class="text-body-medium text-medium-emphasis mb-1">What you did {{ periodLabel }}</div>
+    <div v-if="!jobs.length" class="text-body-medium text-medium-emphasis py-2">
       Nothing yet. Your jobs will show up here.
     </div>
     <v-table v-else density="compact" class="bg-transparent">

@@ -1,7 +1,7 @@
 # Domovoy frontend (`domovoy_app`)
 
 The user-facing single-page app for [Domovoy](../README.md) — a mobile-first PWA
-built with **Vite + Vue 3** (Composition API), **Vuetify 3**, **Pinia**, and
+built with **Vite + Vue 3** (Composition API), **Vuetify 4**, **Pinia**, and
 **vue-router**.
 
 > 📖 Full frontend documentation (API client, stores, routing, components,
@@ -9,11 +9,11 @@ built with **Vite + Vue 3** (Composition API), **Vuetify 3**, **Pinia**, and
 
 ## Quickstart
 
-Requires **Node 22**. The backend should be running first (see the
+Requires **Node 26** (`.nvmrc`). The backend should be running first (see the
 [root README](../README.md)).
 
 ```sh
-nvm use 22
+nvm use
 npm install
 npm run domovoy-types   # generate the typed API client (no server needed)
 npm run dev             # start the Vite dev server

@@ -36,10 +36,10 @@ const rows = computed(() =>
 </script>
 <template>
   <v-card class="pa-4" variant="tonal">
-    <div class="text-body-2 text-medium-emphasis mb-3">Your share {{ periodLabel }}</div>
+    <div class="text-body-medium text-medium-emphasis mb-3">Your share {{ periodLabel }}</div>
     <div v-for="row in rows" :key="row.id" class="contribution">
       <div class="d-flex align-center justify-space-between">
-        <span class="text-subtitle-1">{{ row.name }}</span>
+        <span class="text-title-medium">{{ row.name }}</span>
         <v-btn
           :to="`/homes/${row.id}`"
           variant="text"
@@ -52,8 +52,8 @@ const rows = computed(() =>
       </div>
       <template v-if="row.share !== null">
         <div class="d-flex align-baseline ga-2">
-          <span class="text-h5 font-weight-bold">{{ Math.round(row.share * 100) }}%</span>
-          <span class="text-body-2 text-medium-emphasis">
+          <span class="text-headline-small font-weight-bold">{{ Math.round(row.share * 100) }}%</span>
+          <span class="text-body-medium text-medium-emphasis">
             {{ row.mine }} of {{ row.total }} points
             <template v-if="row.members > 1">
               · an even share would be {{ Math.round(100 / row.members) }}%
@@ -72,7 +72,7 @@ const rows = computed(() =>
           ></span>
         </div>
       </template>
-      <div v-else class="text-body-2 text-medium-emphasis">
+      <div v-else class="text-body-medium text-medium-emphasis">
         Nobody's earned points here {{ periodLabel }} yet.
       </div>
     </div>

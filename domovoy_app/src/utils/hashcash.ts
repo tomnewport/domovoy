@@ -112,7 +112,7 @@ async function* allStrings(charset = '0123456789ABCDEF') {
   }
 }
 
-async function hash(s: string | Uint8Array) {
+async function hash(s: string | Uint8Array<ArrayBuffer>) {
   const encoder = new TextEncoder()
   const data = typeof s == 'string' ? encoder.encode(s) : s
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)

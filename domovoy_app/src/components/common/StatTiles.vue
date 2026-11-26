@@ -8,12 +8,12 @@ const { tiles } = defineProps<{ tiles: StatTile[] }>()
 <template>
   <div class="tiles" :style="{ '--tile-count': tiles.length }">
     <v-card v-for="tile in tiles" :key="tile.label" class="pa-3" variant="tonal">
-      <div class="d-flex align-center ga-1 text-body-2 text-medium-emphasis">
+      <div class="d-flex align-center ga-1 text-body-medium text-medium-emphasis">
         <v-icon :icon="tile.icon" size="16" />
         <span>{{ tile.label }}</span>
       </div>
-      <div class="text-h5 font-weight-bold mt-1">{{ tile.value }}</div>
-      <div class="tile__delta text-caption" :class="`tile__delta--${tile.delta.tone}`">
+      <div class="text-headline-small font-weight-bold mt-1">{{ tile.value }}</div>
+      <div class="tile__delta text-body-small" :class="`tile__delta--${tile.delta.tone}`">
         <v-icon
           v-if="tile.delta.tone !== 'flat'"
           :icon="tile.delta.tone === 'up' ? 'mdi-arrow-up' : 'mdi-arrow-down'"

@@ -18,8 +18,8 @@ const homesStore = useHomesStore()
       class="d-flex flex-column align-center text-center pa-8 text-medium-emphasis"
     >
       <v-icon size="48" class="mb-3">mdi-home-plus-outline</v-icon>
-      <div class="text-subtitle-1">You're not in a home yet</div>
-      <div class="text-body-2">Create one with the + button above.</div>
+      <div class="text-title-medium">You're not in a home yet</div>
+      <div class="text-body-medium">Create one with the + button above.</div>
     </div>
     <template v-else>
       <HomeSummaryCard

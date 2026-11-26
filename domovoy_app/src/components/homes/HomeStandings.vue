@@ -44,8 +44,8 @@ const chartDates = computed(() => stats.dates.slice(-period))
 </script>
 <template>
   <v-card class="pa-4" variant="tonal">
-    <div class="text-body-2 text-medium-emphasis">Who did what {{ periodLabel }}</div>
-    <div class="text-subtitle-1 mb-3">{{ headline }}</div>
+    <div class="text-body-medium text-medium-emphasis">Who did what {{ periodLabel }}</div>
+    <div class="text-title-medium mb-3">{{ headline }}</div>
 
     <ol class="standings">
       <li v-for="(member, i) in ranked" :key="member.id" class="standings__row">
@@ -67,11 +67,11 @@ const chartDates = computed(() => stats.dates.slice(-period))
         <span class="standings__share text-medium-emphasis">{{ share(member.points) }}%</span>
       </li>
     </ol>
-    <div class="text-caption text-medium-emphasis mt-2">
+    <div class="text-body-small text-medium-emphasis mt-2">
       These points include overdue bonuses; upkeep leaves them out.
     </div>
 
-    <div class="text-body-2 text-medium-emphasis mt-4 mb-2">Running total {{ periodLabel }}</div>
+    <div class="text-body-medium text-medium-emphasis mt-4 mb-2">Running total {{ periodLabel }}</div>
     <PointsRaceChart
       :dates="chartDates"
       :series="chartSeries"

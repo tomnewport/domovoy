@@ -114,8 +114,8 @@ function when(g: HolidayGroup) {
           <v-icon :icon="status.icon" />
         </v-avatar>
         <div>
-          <div class="text-subtitle-1 font-weight-medium">{{ status.title }}</div>
-          <div class="text-body-2 text-medium-emphasis">{{ status.detail }}</div>
+          <div class="text-title-medium font-weight-medium">{{ status.title }}</div>
+          <div class="text-body-medium text-medium-emphasis">{{ status.detail }}</div>
         </div>
       </div>
     </v-card>
@@ -133,7 +133,7 @@ function when(g: HolidayGroup) {
       <HolidayCalendar :groups="holidays.groups.value" :selection="selection" @pick="onPick" />
     </v-card>
     <div class="d-flex align-center justify-space-between mb-5 px-1">
-      <span class="text-caption text-medium-emphasis">
+      <span class="text-body-small text-medium-emphasis">
         <template v-if="selection">Now tap the last day you're away.</template>
         <template v-else>Tap a day to start a holiday, or a shaded day to edit one.</template>
       </span>
@@ -150,7 +150,7 @@ function when(g: HolidayGroup) {
       </v-btn>
     </div>
 
-    <div class="text-subtitle-2 mb-2">Upcoming</div>
+    <div class="text-title-small mb-2">Upcoming</div>
     <template v-if="!holidays.loaded.value">
       <v-skeleton-loader
         v-for="n in 2"
@@ -162,7 +162,7 @@ function when(g: HolidayGroup) {
     </template>
     <div
       v-else-if="!holidays.upcoming.value.length"
-      class="text-body-2 text-medium-emphasis mb-4 px-1"
+      class="text-body-medium text-medium-emphasis mb-4 px-1"
     >
       Nothing planned. Add one so you aren't given jobs while you're away.
     </div>
@@ -194,7 +194,7 @@ function when(g: HolidayGroup) {
 
     <v-expansion-panels v-if="holidays.past.value.length" variant="accordion" flat>
       <v-expansion-panel bg-color="transparent">
-        <v-expansion-panel-title class="px-1 text-subtitle-2">
+        <v-expansion-panel-title class="px-1 text-title-small">
           Past holidays ({{ holidays.past.value.length }})
         </v-expansion-panel-title>
         <v-expansion-panel-text>

@@ -10,7 +10,7 @@ over time, works around people's holidays, and nudges overdue tasks back into
 view with bonus points.
 
 - **Backend:** Django 6 + [django-ninja](https://django-ninja.dev/) REST API (SQLite by default, Postgres via `domovoy_database_url`)
-- **Frontend:** Vue 3 + Vuetify 3 + Pinia single-page app
+- **Frontend:** Vue 3 + Vuetify 4 + Pinia single-page app
 - **Auth:** passwordless email magic-links (optional password), with
   [hashcash](https://en.wikipedia.org/wiki/Hashcash) proof-of-work to throttle abuse
 
@@ -138,7 +138,7 @@ The API is then served at `http://127.0.0.1:8000/api/` with interactive docs at
 
 ```sh
 cd domovoy_app
-nvm use 22                     # Node 22
+nvm use                        # Node 26, from domovoy_app/.nvmrc
 npm install
 npm run domovoy-types          # regenerate the typed API client (no server needed)
 npm run dev
