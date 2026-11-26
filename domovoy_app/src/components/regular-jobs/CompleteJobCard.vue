@@ -84,7 +84,7 @@ const due = computed(() =>
 
 <template>
   <v-card>
-    <v-card-title class="d-flex"
+    <v-card-title class="d-flex align-center"
       ><span>{{ jobDefinition.name }}</span>
       <v-spacer></v-spacer>
       <v-btn
@@ -120,8 +120,10 @@ const due = computed(() =>
         >{{ jobDefinition.bonus }} bonus</v-list-item
       >
     </v-list>
+    <!-- Vuetify 4 sliders have no side margin; px-4 lines the labels up with the list. -->
     <v-slider
       v-if="jobDefinition.value_min < jobDefinition.value_max"
+      class="px-4"
       hoist
       step="1"
       thumb-label
