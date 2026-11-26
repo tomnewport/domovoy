@@ -16,7 +16,7 @@ onMounted(() => {
   }, 60000)
 })
 onBeforeUnmount(() => {
-  timer.value && clearInterval(timer.value)
+  if (timer.value) clearInterval(timer.value)
 })
 const display = computed(() => {
   if (!content.value) return ''

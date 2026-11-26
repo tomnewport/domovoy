@@ -70,7 +70,7 @@ const line = computed(() => {
     </v-list-item-subtitle>
 
     <template #append>
-      <span class="todo-item__points text-body-2">+{{ points }}</span>
+      <span class="todo-item__points text-body-medium">+{{ points }}</span>
     </template>
   </v-list-item>
 </template>

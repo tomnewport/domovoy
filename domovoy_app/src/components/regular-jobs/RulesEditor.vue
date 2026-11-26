@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import RuleDelayEditor from './RuleDelayEditor.vue'
 import RuleCalendarEditor from './RuleCalendarEditor.vue'
 import { type Ruleset, type RuleCalendar, type RuleDelay } from '@/stores/regular-job'

@@ -109,8 +109,8 @@ const contributions = computed(() =>
         <v-window-item value="progress">
           <div class="d-flex align-center justify-space-between mb-3">
             <div>
-              <div class="text-h6">{{ sessionStore.session?.name_short }}</div>
-              <div class="text-body-2 text-medium-emphasis">Your progress</div>
+              <div class="text-title-large">{{ sessionStore.session?.name_short }}</div>
+              <div class="text-body-medium text-medium-emphasis">Your progress</div>
             </div>
             <v-btn-toggle v-model="period" mandatory density="compact" variant="outlined" divided>
               <v-btn :value="7">7 days</v-btn>
@@ -147,7 +147,7 @@ const contributions = computed(() =>
               :user-id="me"
               class="mb-4"
             />
-            <div v-else class="text-center pa-6 text-medium-emphasis text-body-2">
+            <div v-else class="text-center pa-6 text-medium-emphasis text-body-medium">
               Join or create a home to see your share of the housework.
             </div>
             <TopJobs :completions="mine ?? []" :period="period" :home-label="homeLabel" />

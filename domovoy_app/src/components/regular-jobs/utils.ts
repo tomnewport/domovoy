@@ -1,7 +1,5 @@
-import { useCurrentUser } from '@/lookups/user'
 import type { GetSessionResponse } from '@/services/domovoy/usersV1'
 import type { RegularJobDefinition } from '@/stores/regular-job'
-import { computed } from 'vue'
 
 export enum JobClassification {
   UNSCHEDULED = 'Unscheduled',

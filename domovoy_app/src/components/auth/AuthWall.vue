@@ -17,7 +17,7 @@ const loginMode = ref<'password' | 'email'>(route.query.login === 'email' ? 'ema
   <AuthLayout v-if="sessionStore.checking" compact>
     <div class="d-flex flex-column align-center pa-8" role="status">
       <v-progress-circular indeterminate color="primary" size="40" />
-      <div class="text-body-2 text-medium-emphasis mt-4">Opening your homes…</div>
+      <div class="text-body-medium text-medium-emphasis mt-4">Opening your homes…</div>
     </div>
   </AuthLayout>
 
@@ -33,7 +33,7 @@ const loginMode = ref<'password' | 'email'>(route.query.login === 'email' ? 'ema
       </v-window>
     </v-card-text>
     <template #below>
-      <div class="text-center text-body-2">
+      <div class="text-center text-body-medium">
         New to Domovoy?
         <v-btn to="/register" variant="text" color="primary" class="px-2">Create an account</v-btn>
       </div>

@@ -58,9 +58,9 @@ function initials(name: string) {
     <EditableItem label="Name" :value="home.name" :onChange="setName" />
     <EditableItem label="Description" :value="home.description || ''" :onChange="setDescription" />
 
-    <div class="text-subtitle-1 mt-4">Jobs</div>
+    <div class="text-title-medium mt-4">Jobs</div>
     <div class="d-flex align-center justify-space-between">
-      <span class="text-body-2 text-medium-emphasis">
+      <span class="text-body-medium text-medium-emphasis">
         <template v-if="regularJobStore.hasData">
           {{ jobCount }} {{ jobCount === 1 ? 'job' : 'jobs' }}
         </template>
@@ -70,14 +70,14 @@ function initials(name: string) {
       </v-btn>
     </div>
 
-    <div class="text-subtitle-1 mt-6">Members</div>
+    <div class="text-title-medium mt-6">Members</div>
     <v-list bg-color="transparent" class="pa-0">
       <v-list-item v-for="member in members" :key="member.id" class="px-1">
         <template #prepend>
           <v-avatar
             size="36"
             :style="{ background: member.color, color: textOn(member.color) }"
-            class="text-caption font-weight-bold"
+            class="text-body-small font-weight-bold"
           >
             {{ initials(member.name) }}
           </v-avatar>

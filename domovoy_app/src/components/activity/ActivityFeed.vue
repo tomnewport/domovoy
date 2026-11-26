@@ -171,8 +171,8 @@ function initials(name: string) {
       class="d-flex flex-column align-center text-center pa-8 text-medium-emphasis"
     >
       <v-icon size="48" class="mb-3">mdi-history</v-icon>
-      <div class="text-subtitle-1">Nothing done yet</div>
-      <div class="text-body-2">
+      <div class="text-title-medium">Nothing done yet</div>
+      <div class="text-body-medium">
         {{ member !== 'all' ? 'Nothing from them yet.' : 'Completed jobs show up here.' }}
       </div>
     </div>
@@ -193,7 +193,7 @@ function initials(name: string) {
                 background: colorOf(item),
                 color: textOn(colorOf(item))
               }"
-              class="text-caption font-weight-bold"
+              class="text-body-small font-weight-bold"
             >
               {{ initials(people.get(item.completed_by_id)?.full ?? '?') }}
             </v-avatar>
@@ -215,7 +215,7 @@ function initials(name: string) {
             </template>
           </v-list-item-subtitle>
           <template #append>
-            <span class="text-body-2 font-weight-medium">+{{ item.value }}</span>
+            <span class="text-body-medium font-weight-medium">+{{ item.value }}</span>
           </template>
         </v-list-item>
       </template>

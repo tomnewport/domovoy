@@ -47,7 +47,7 @@ export const useSessionStore = defineStore('session', () => {
       }
       // Any other failure (5xx, offline) keeps the session we already had.
       finishLoading()
-    } catch (err) {
+    } catch {
       setError('Could not check your session')
       initialized.value = true
     }

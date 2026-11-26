@@ -70,7 +70,7 @@ onMounted(() => {
       />
       <div v-else class="d-flex flex-column align-center text-center pa-8 text-medium-emphasis">
         <v-icon size="48" class="mb-3">mdi-home-off-outline</v-icon>
-        <div class="text-subtitle-1">This home isn't one of yours</div>
+        <div class="text-title-medium">This home isn't one of yours</div>
         <v-btn to="/homes" variant="text" class="mt-2">Back to homes</v-btn>
       </div>
     </v-container>

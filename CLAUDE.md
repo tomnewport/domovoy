@@ -23,7 +23,7 @@ uv run python manage.py test             # discovers domovoy/apps/*/tests.py
 uv run ruff check .                      # lint (ruff is a dev dependency)
 ```
 
-Frontend (from `domovoy_app/`, Node 22):
+Frontend (from `domovoy_app/`, Node 26 per `.nvmrc`):
 
 ```sh
 npm install

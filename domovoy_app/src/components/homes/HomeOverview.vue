@@ -91,7 +91,7 @@ const tiles = computed((): StatTile[] => {
 <template>
   <div>
     <div class="d-flex align-center justify-space-between mb-3">
-      <div class="text-body-2 text-medium-emphasis">How the home is doing</div>
+      <div class="text-body-medium text-medium-emphasis">How the home is doing</div>
       <v-btn-toggle v-model="period" mandatory density="compact" variant="outlined" divided>
         <v-btn :value="7">7 days</v-btn>
         <v-btn :value="30">30 days</v-btn>

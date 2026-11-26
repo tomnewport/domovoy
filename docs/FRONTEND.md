@@ -1,7 +1,7 @@
 # Frontend guide
 
 The `domovoy_app/` directory is the user-facing single-page app. It is a
-mobile-first PWA built with **Vite + Vue 3** (Composition API), **Vuetify 3**
+mobile-first PWA built with **Vite + Vue 3** (Composition API), **Vuetify 4**
 for UI, **Pinia** for state, and **vue-router**. This describes the app **as it
 is today**.
 
@@ -9,7 +9,7 @@ is today**.
 
 ```sh
 cd domovoy_app
-nvm use 22                 # Node 22
+nvm use                    # Node 26, from .nvmrc
 npm install
 npm run domovoy-types      # regenerate the typed API client (no server needed)
 npm run dev                # Vite dev server

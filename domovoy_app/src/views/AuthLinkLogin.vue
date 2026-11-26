@@ -31,8 +31,8 @@ onMounted(async () => {
   <AuthLayout compact>
     <div class="d-flex flex-column align-center text-center pa-8" role="status">
       <v-progress-circular indeterminate color="primary" size="40" />
-      <h2 class="text-h6 mt-5">Logging you in…</h2>
-      <p class="text-body-2 text-medium-emphasis mt-1">Checking your link.</p>
+      <h2 class="text-title-large mt-5">Logging you in…</h2>
+      <p class="text-body-medium text-medium-emphasis mt-1">Checking your link.</p>
     </div>
   </AuthLayout>
 </template>

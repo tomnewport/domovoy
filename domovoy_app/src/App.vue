@@ -3,6 +3,7 @@ import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { Toaster } from 'vue-sonner'
+import 'vue-sonner/style.css' // vue-sonner 2 no longer injects its CSS
 import BottomMenu from '@/components/layout/BottomMenu.vue'
 import NetworkActivityBar from '@/components/layout/NetworkActivityBar.vue'
 import CongratulateCard from '@/components/regular-jobs/CongratulateCard.vue'
@@ -20,7 +21,7 @@ const route = useRoute()
 
 const showBottomMenu = computed(() => sessionStore.loggedIn && route.meta.bottomNav !== false)
 
-let intervals: number[] = []
+const intervals: number[] = []
 
 // Route views are separate chunks; fetch them once the first screen is up so
 // the first tap on another tab doesn't wait for a download.

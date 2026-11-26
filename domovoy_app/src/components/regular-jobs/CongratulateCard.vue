@@ -56,7 +56,7 @@ const colors = computed(() => memberColors(users.value.map((u) => u.id)))
         </v-card-title>
         <v-card-text>
           <v-row no-gutters>
-            <v-col class="text-h2" cols="6">+{{ regularJobStore.motivation?.valueChange }} </v-col>
+            <v-col class="text-display-large" cols="6">+{{ regularJobStore.motivation?.valueChange }} </v-col>
             <v-col class="text-right" cols="6">
               <v-icon color="success" icon="mdi-medal" size="88"></v-icon>
             </v-col>
@@ -73,16 +73,16 @@ const colors = computed(() => memberColors(users.value.map((u) => u.id)))
         </v-card-text>
         <v-divider></v-divider>
         <v-card-text>
-          <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-2">
+          <div class="d-flex justify-space-between text-body-small text-medium-emphasis mb-2">
             <span>Points per day, last {{ users[0]?.daily_scores.length ?? 30 }} days</span>
             <span>Same scale: 0–{{ sharedMax }}</span>
           </div>
           <div v-for="user of users" :key="user.id" class="d-flex align-center ga-3 py-1">
-            <span class="score text-body-2 text-medium-emphasis">
+            <span class="score text-body-medium text-medium-emphasis">
               <template v-if="user.relative_score > 0">+{{ user.relative_score }}</template>
             </span>
             <span
-              class="name text-body-2"
+              class="name text-body-medium"
               :class="{ 'font-weight-bold': user.id === regularJobStore.motivation?.stats.self }"
             >
               {{ user.name_short

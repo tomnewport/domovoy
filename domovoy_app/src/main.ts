@@ -38,6 +38,11 @@ const vuetify = createVuetify({
   components: { ...components, DUserDisplay, DDateDisplay, DHomeDisplay, DEditableItem },
   directives,
 
+  // Vuetify 4 no longer upper-cases button labels; keep the app's look.
+  defaults: {
+    VBtn: { class: 'text-uppercase' }
+  },
+
   theme: {
     defaultTheme: 'dark',
     themes: {

@@ -102,7 +102,7 @@ async function onDelete() {
         </v-card-subtitle>
       </v-card-item>
       <v-card-text class="px-6">
-        <p v-if="isPast" class="text-body-2 text-medium-emphasis mb-3">
+        <p v-if="isPast" class="text-body-medium text-medium-emphasis mb-3">
           {{ group?.note || 'No note' }}. Past holidays can't be changed, only deleted.
         </p>
         <v-form v-else ref="form" @submit.prevent="submit">
@@ -151,7 +151,7 @@ async function onDelete() {
             chips
             :rules="rules.homes"
           />
-          <p class="text-caption text-medium-emphasis">
+          <p class="text-body-small text-medium-emphasis">
             Jobs won't be scheduled for you on these days. Ones already assigned stay as they are.
           </p>
         </v-form>

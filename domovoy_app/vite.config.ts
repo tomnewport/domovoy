@@ -16,5 +16,17 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  // Vuetify 4 stacks overlays (a select inside a dialog) through one shared
+  // module. In dev, Vite can serve these from two caches, making menus open
+  // behind dialogs; pre-bundling them together prevents that.
+  optimizeDeps: {
+    include: [
+      'vuetify/components/VOverlay',
+      'vuetify/components/VDialog',
+      'vuetify/components/VMenu',
+      'vuetify/components/VSelect',
+      'vuetify/components/VTooltip'
+    ]
   }
 })

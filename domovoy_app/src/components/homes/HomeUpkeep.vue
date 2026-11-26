@@ -63,7 +63,7 @@ function howOften(perWeek: number) {
 <template>
   <div class="upkeep">
     <div class="d-flex align-center justify-space-between mb-1">
-      <span class="text-body-2 text-medium-emphasis">Upkeep {{ periodLabel }}</span>
+      <span class="text-body-medium text-medium-emphasis">Upkeep {{ periodLabel }}</span>
       <v-chip
         v-if="status"
         :color="status.color"
@@ -77,8 +77,8 @@ function howOften(perWeek: number) {
 
     <template v-if="current.ratio !== null">
       <div class="d-flex align-baseline ga-2">
-        <span class="text-h4 font-weight-bold">{{ percent(current.ratio) }}</span>
-        <span class="text-body-2 text-medium-emphasis">
+        <span class="text-display-small font-weight-bold">{{ percent(current.ratio) }}</span>
+        <span class="text-body-medium text-medium-emphasis">
           {{ current.points }} of {{ round(current.ideal) }} points
         </span>
       </div>
@@ -89,7 +89,7 @@ function howOften(perWeek: number) {
         class="mt-2"
       />
 
-      <div class="text-body-2 text-medium-emphasis mt-4 mb-1">Last {{ weeks.length }} weeks</div>
+      <div class="text-body-medium text-medium-emphasis mt-4 mb-1">Last {{ weeks.length }} weeks</div>
       <div class="weeks">
         <svg
           :width="chartWidth"
@@ -131,18 +131,18 @@ function howOften(perWeek: number) {
             />
           </g>
         </svg>
-        <span class="weeks__ideal-label text-caption" :style="{ top: `${idealY - 8}px` }"
+        <span class="weeks__ideal-label text-body-small" :style="{ top: `${idealY - 8}px` }"
           >ideal</span
         >
       </div>
       <div
-        class="d-flex justify-space-between text-caption text-medium-emphasis"
+        class="d-flex justify-space-between text-body-small text-medium-emphasis"
         :style="{ width: `${chartWidth}px` }"
       >
         <span>{{ weeks[0]?.short }}</span>
         <span>{{ weeks[weeks.length - 1]?.short }}</span>
       </div>
-      <div class="text-caption mt-1 weeks__readout" aria-live="polite">
+      <div class="text-body-small mt-1 weeks__readout" aria-live="polite">
         <template v-if="hovered !== null">
           <strong>{{ percent(weeks[hovered].ratio) }}</strong>
           <span class="text-medium-emphasis">
@@ -168,7 +168,7 @@ function howOften(perWeek: number) {
         </v-btn>
       </div>
 
-      <div v-if="showBreakdown" class="text-body-2 mt-2">
+      <div v-if="showBreakdown" class="text-body-medium mt-2">
         <p class="text-medium-emphasis mb-2">
           Every job done on schedule, at its usual points, earns
           <strong>{{ round(upkeep.ideal_per_week) }}</strong> points a week. Overdue bonuses aren't
@@ -211,7 +211,7 @@ function howOften(perWeek: number) {
         </tbody>
       </v-table>
     </template>
-    <p v-else class="text-body-2 text-medium-emphasis">
+    <p v-else class="text-body-medium text-medium-emphasis">
       No scheduled jobs yet, so there's nothing to keep up with.
     </p>
   </div>

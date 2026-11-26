@@ -20,8 +20,8 @@ const features = [
           width="72"
           height="72"
         />
-        <h1 class="text-h4 font-weight-bold mt-3">Domovoy</h1>
-        <p v-if="!compact" class="text-body-1 text-medium-emphasis mt-1">
+        <h1 class="text-display-small font-weight-bold mt-3">Domovoy</h1>
+        <p v-if="!compact" class="text-body-large text-medium-emphasis mt-1">
           Share the chores. Fairly.
         </p>
       </header>
