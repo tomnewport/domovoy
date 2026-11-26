@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The frame for every logged-out screen: logo and name, then the screen's own
-// card. `compact` drops the tagline and feature list for secondary screens.
+// card. `compact` drops the feature list for secondary screens.
 const { compact = false } = defineProps<{ compact?: boolean }>()
 
 const features = [
@@ -21,9 +21,6 @@ const features = [
           height="72"
         />
         <h1 class="text-display-small font-weight-bold mt-3">Domovoy</h1>
-        <p v-if="!compact" class="text-body-large text-medium-emphasis mt-1">
-          Share the chores. Fairly.
-        </p>
       </header>
 
       <v-card class="auth-layout__card" rounded="xl" elevation="8">
